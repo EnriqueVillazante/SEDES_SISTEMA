@@ -222,12 +222,12 @@ export default function EvaluacionForm() {
           </div>
 
           {/* Barra inferior de botones (Controles) */}
-          <div className="px-6 sm:px-10 py-6 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+          <div className="px-6 sm:px-10 py-6 bg-slate-50 border-t border-slate-100 flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-4">
             
             <button
               onClick={prevStep}
               disabled={currentStep === 1}
-              className={`flex items-center px-5 py-2.5 text-sm font-bold rounded-xl transition-all ${
+              className={`w-full sm:w-auto flex items-center justify-center px-5 py-3 sm:py-2.5 text-sm font-bold rounded-xl transition-all ${
                 currentStep === 1 
                   ? 'text-slate-400 bg-slate-100 cursor-not-allowed' 
                   : 'text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 shadow-sm'
@@ -236,11 +236,11 @@ export default function EvaluacionForm() {
               <ArrowLeft className="w-4 h-4 mr-2" /> Atrás
             </button>
 
-            <div className="flex items-center space-x-3">
+            <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
               <button
                 type="button"
                 onClick={handleSaveDraft}
-                className="flex items-center px-5 py-2.5 text-sm font-bold text-teal-700 bg-teal-50 border border-teal-200 hover:bg-teal-100 rounded-xl transition-colors shadow-sm"
+                className="w-full sm:w-auto flex items-center justify-center px-5 py-3 sm:py-2.5 text-sm font-bold text-teal-700 bg-teal-50 border border-teal-200 hover:bg-teal-100 rounded-xl transition-colors shadow-sm"
               >
                 <Save className="w-4 h-4 mr-2" /> Guardar Borrador
               </button>
@@ -249,7 +249,7 @@ export default function EvaluacionForm() {
                 <button
                   type="button"
                   onClick={nextStep}
-                  className="flex items-center px-6 py-2.5 text-sm font-bold text-white bg-teal-600 hover:bg-teal-700 rounded-xl transition-colors shadow-md"
+                  className="w-full sm:w-auto flex items-center justify-center px-6 py-3 sm:py-2.5 text-sm font-bold text-white bg-teal-600 hover:bg-teal-700 rounded-xl transition-colors shadow-md"
                 >
                   Siguiente <ArrowRight className="w-4 h-4 ml-2" />
                 </button>
@@ -258,7 +258,7 @@ export default function EvaluacionForm() {
                   type="button"
                   onClick={handleSubmitFinal}
                   disabled={isSubmitting}
-                  className="flex items-center px-6 py-2.5 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors shadow-md disabled:opacity-70"
+                  className="w-full sm:w-auto flex items-center justify-center px-6 py-3 sm:py-2.5 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors shadow-md disabled:opacity-70"
                 >
                   {isSubmitting ? (
                      <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>

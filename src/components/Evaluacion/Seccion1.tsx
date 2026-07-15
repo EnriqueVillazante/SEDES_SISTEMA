@@ -51,9 +51,9 @@ export default function Seccion1({ register, errors }: Seccion1Props) {
             <h3 className="font-bold text-teal-800 text-lg mb-1">{q.title}</h3>
             <p className="text-slate-700 font-medium mb-4">{q.text}</p>
             
-            <div className="flex space-x-8">
+            <div className="flex flex-wrap gap-3 sm:gap-6">
               {[2, 1, 0].map((val) => (
-                <label key={val} className="flex items-center space-x-3 cursor-pointer group bg-white px-5 py-3 rounded-xl border border-slate-200 hover:border-slate-300 shadow-sm transition-all">
+                <label key={val} className="flex-1 sm:flex-none flex items-center justify-center sm:justify-start space-x-3 cursor-pointer group bg-white px-4 sm:px-5 py-3 rounded-xl border border-slate-200 hover:border-slate-300 shadow-sm transition-all">
                   <input 
                     type="radio" 
                     value={val}

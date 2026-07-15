@@ -52,9 +52,9 @@ export default function Seccion3({ register, errors }: Seccion3Props) {
   ];
 
   const renderRadios = (id: string, groupKey: string = 'seccion_3_respuestas') => (
-    <div className="flex space-x-8 mt-4">
+    <div className="flex flex-wrap gap-2 sm:gap-6 mt-4">
       {[2, 1, 0].map((val) => (
-        <label key={`${id}-${val}`} className="flex items-center space-x-3 cursor-pointer group bg-white px-4 py-2 rounded-xl border border-slate-200 hover:border-slate-300 shadow-sm transition-all">
+        <label key={`${id}-${val}`} className="flex-1 sm:flex-none flex items-center justify-center sm:justify-start space-x-3 cursor-pointer group bg-white px-4 py-2 rounded-xl border border-slate-200 hover:border-slate-300 shadow-sm transition-all">
           <input 
             type="radio" 
             value={val}

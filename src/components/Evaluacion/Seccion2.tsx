@@ -32,9 +32,9 @@ export default function Seccion2({ register, errors }: Seccion2Props) {
             {/* Pregunta 1: Conformación */}
             <div className="mb-6">
               <p className="text-slate-700 font-bold mb-3">Conformado Formalmente:</p>
-              <div className="flex space-x-4 sm:space-x-8">
+              <div className="flex flex-wrap gap-2 sm:gap-6">
                 {[2, 1, 0].map((val) => (
-                  <label key={`conf-${sub.id}-${val}`} className="flex items-center space-x-3 cursor-pointer group bg-white px-4 py-2 rounded-xl border border-slate-200 hover:border-slate-300 shadow-sm transition-all">
+                  <label key={`conf-${sub.id}-${val}`} className="flex-1 sm:flex-none flex items-center justify-center sm:justify-start space-x-3 cursor-pointer group bg-white px-4 py-2 rounded-xl border border-slate-200 hover:border-slate-300 shadow-sm transition-all">
                     <input 
                       type="radio" 
                       value={val}
@@ -65,9 +65,9 @@ export default function Seccion2({ register, errors }: Seccion2Props) {
             {/* Pregunta 2: Sesiones */}
             <div className="mb-6">
               <p className="text-slate-700 font-bold mb-3">Sesiona de forma Regular:</p>
-              <div className="flex space-x-4 sm:space-x-8">
+              <div className="flex flex-wrap gap-2 sm:gap-6">
                 {[2, 1, 0].map((val) => (
-                  <label key={`ses-${sub.id}-${val}`} className="flex items-center space-x-3 cursor-pointer group bg-white px-4 py-2 rounded-xl border border-slate-200 hover:border-slate-300 shadow-sm transition-all">
+                  <label key={`ses-${sub.id}-${val}`} className="flex-1 sm:flex-none flex items-center justify-center sm:justify-start space-x-3 cursor-pointer group bg-white px-4 py-2 rounded-xl border border-slate-200 hover:border-slate-300 shadow-sm transition-all">
                     <input 
                       type="radio" 
                       value={val}

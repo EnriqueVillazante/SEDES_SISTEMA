@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { ArrowLeft, CheckCircle, AlertTriangle, ShieldAlert, FileText, LayoutList, Eye, X, Activity } from 'lucide-react';
@@ -350,11 +350,6 @@ export default function AdminEvaluacionDetalle() {
     return dictionary[key] || key;
   };
 
-  const getScoreColor = (score: number) => {
-    if (score === 2) return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
-    if (score === 1) return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
-    return 'bg-slate-800 text-slate-400 border-slate-700';
-  };
 
   const getSemaforoIcon = (nivel: string) => {
     if (nivel === 'ÓPTIMO') return <CheckCircle className="h-6 w-6 text-emerald-400" />;

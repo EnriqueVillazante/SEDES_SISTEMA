@@ -11,20 +11,31 @@ import AdminEvaluacionDetalle from './components/Admin/AdminEvaluacionDetalle';
 
 function App() {
   const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    async function loadData(currentSession: Session | null) {
+      if (currentSession) {
+        const { data } = await supabase.from('usuarios').select('rol').eq('id', currentSession.user.id).single();
+        setProfile(data);
+      } else {
+        setProfile(null);
+      }
+      setSession(currentSession);
+      setLoading(false);
+    }
+
     // Obtener la sesión actual al cargar
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
+      loadData(session);
     });
 
     // Escuchar cambios de estado (login, logout, registro)
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
+      loadData(session);
     });
 
     return () => subscription.unsubscribe();
@@ -33,7 +44,7 @@ function App() {
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600"></div>
       </div>
     );
   }
@@ -48,14 +59,14 @@ function App() {
           <Route path="*" element={<Navigate to="/login" replace />} />
         </>
       ) : (
-        /* Si HAY sesión, mostramos rutas protegidas. Si intenta ir a login/register, va a raíz. */
+        /* Si HAY sesión, mostramos rutas protegidas. */
         <>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/admin/evaluacion/:id" element={<AdminEvaluacionDetalle />} />
+          <Route path="/" element={profile?.rol === 'ADMINISTRADOR' ? <Navigate to="/admin" replace /> : <Dashboard />} />
+          <Route path="/admin" element={profile?.rol === 'ADMINISTRADOR' ? <AdminDashboard /> : <Navigate to="/" replace />} />
+          <Route path="/admin/evaluacion/:id" element={profile?.rol === 'ADMINISTRADOR' ? <AdminEvaluacionDetalle /> : <Navigate to="/" replace />} />
           <Route path="/evaluacion/nueva" element={<EvaluacionForm />} />
           <Route path="/evaluacion/editar/:id" element={<EvaluacionForm />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<Navigate to={profile?.rol === 'ADMINISTRADOR' ? '/admin' : '/'} replace />} />
         </>
       )}
     </Routes>

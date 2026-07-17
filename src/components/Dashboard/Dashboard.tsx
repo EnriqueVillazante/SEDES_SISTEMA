@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { LogOut, Activity, Building, ShieldCheck, Briefcase, MapPin, Phone, Mail, Calendar, Clock, ChevronRight } from 'lucide-react';
+import { LogOut, Activity, Building, ShieldCheck, Briefcase, MapPin, Phone, Mail, Calendar, Clock, ChevronRight, Landmark } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function Dashboard() {
@@ -66,22 +66,27 @@ export default function Dashboard() {
     <div className="min-h-screen bg-slate-50 font-sans relative overflow-hidden">
       {/* Navbar */}
       <header className="bg-teal-800 shadow-md border-b border-teal-700 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-[5rem] py-3 flex flex-wrap items-center justify-between gap-y-3 gap-x-4">
           <div className="flex items-center space-x-3">
-            <div className="h-12 w-12 bg-white rounded-xl flex items-center justify-center shadow-lg border border-teal-100/20">
-              <Activity className="h-7 w-7 text-teal-600" />
+            <div className="flex items-center justify-center bg-white p-1 rounded-xl shadow-lg border border-teal-100/20">
+              <img 
+                src="/logo.png" 
+                alt="Logo SEDES" 
+                className="h-8 sm:h-10 w-auto object-contain"
+              />
             </div>
             <div>
-              <h1 className="text-2xl font-extrabold text-white tracking-tight leading-none">SEDES</h1>
-              <p className="text-xs text-teal-200 uppercase font-bold tracking-widest mt-1">Plataforma Oficial</p>
+              <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight leading-none">SEDES</h1>
+              <p className="text-[10px] sm:text-xs text-teal-200 uppercase font-bold tracking-widest mt-1">Plataforma Oficial</p>
             </div>
           </div>
           <button
             onClick={handleSignOut}
-            className="group flex items-center px-4 py-2.5 text-sm font-bold text-white bg-white/10 hover:bg-red-500 rounded-xl transition-all duration-300 border border-white/10 shadow-sm hover:shadow-md"
+            className="group flex flex-1 sm:flex-none justify-center items-center px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-white bg-white/10 hover:bg-red-500 rounded-xl transition-all duration-300 border border-white/10 shadow-sm hover:shadow-md"
           >
-            <LogOut className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform" />
-            Cerrar Sesión
+            <LogOut className="h-4 w-4 sm:mr-2 group-hover:scale-110 transition-transform" />
+            <span className="hidden sm:inline">Cerrar Sesión</span>
+            <span className="sm:hidden ml-1">Salir</span>
           </button>
         </div>
       </header>
@@ -241,6 +246,16 @@ export default function Dashboard() {
                         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Nivel de Atención</p>
                       </div>
                       <p className="font-semibold text-slate-800 text-lg pl-12 uppercase">{profile.nivel_atencion || 'No registrado'}</p>
+                    </div>
+
+                    <div className="group">
+                      <div className="flex items-center mb-2">
+                        <div className="p-2 bg-teal-50 rounded-lg text-teal-600 mr-3 group-hover:bg-teal-500 group-hover:text-white transition-colors">
+                          <Landmark className="h-5 w-5" />
+                        </div>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Sector</p>
+                      </div>
+                      <p className="font-semibold text-slate-800 text-lg pl-12 uppercase">{profile.sector || 'No registrado'}</p>
                     </div>
 
                   </div>

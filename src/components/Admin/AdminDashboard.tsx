@@ -14,7 +14,7 @@ export default function AdminDashboard() {
       try {
         const { data: evals, error } = await supabase
           .from('evaluaciones')
-          .select('id, establecimiento_salud, red_salud, nivel_atencion, fecha_evaluacion, estado, puntaje_total, porcentaje, nivel_semaforo, usuario_id')
+          .select('id, establecimiento_salud, red_salud, nivel_atencion, fecha_evaluacion, estado, puntaje_total, porcentaje, nivel_semaforo, usuario_id, usuarios(sector)')
           .order('fecha_evaluacion', { ascending: false });
 
         if (error) throw error;
@@ -52,23 +52,37 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-slate-900 font-sans relative overflow-hidden">
       {/* Admin Navbar */}
       <header className="bg-slate-950 shadow-xl border-b border-slate-800 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-[5rem] py-3 flex flex-wrap items-center justify-between gap-y-3 gap-x-4">
           <div className="flex items-center space-x-3">
-            <div className="h-12 w-12 bg-amber-500 rounded-xl flex items-center justify-center shadow-lg shadow-amber-500/20 border border-amber-400/20">
-              <ShieldAlert className="h-7 w-7 text-slate-900" />
-            </div>
+            <img 
+              src="/logo.png" 
+              alt="Logo SEDES" 
+              className="h-10 sm:h-12 w-auto object-contain drop-shadow-md"
+            />
             <div>
-              <h1 className="text-2xl font-extrabold text-white tracking-tight leading-none">SEDES ADMIN</h1>
-              <p className="text-xs text-amber-500 uppercase font-bold tracking-widest mt-1">Panel de Control General</p>
+              <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight leading-none">SEDES ADMIN</h1>
+              <p className="text-[10px] sm:text-xs text-amber-500 uppercase font-bold tracking-widest mt-1">Panel de Control General</p>
             </div>
           </div>
-          <button
-            onClick={handleSignOut}
-            className="group flex items-center px-4 py-2.5 text-sm font-bold text-white bg-slate-800 hover:bg-red-500/90 rounded-xl transition-all duration-300 border border-slate-700 hover:border-red-500 shadow-sm"
-          >
-            <LogOut className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform" />
-            Cerrar Sesión
-          </button>
+          <div className="flex items-center space-x-2 sm:space-x-3 w-full sm:w-auto justify-end">
+            <Link
+              to="/evaluacion/nueva"
+              className="group flex flex-1 sm:flex-none justify-center items-center px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-amber-500 bg-amber-500/10 hover:bg-amber-500 hover:text-slate-900 rounded-xl transition-all duration-300 border border-amber-500/20 hover:border-amber-500 shadow-sm"
+              title="Ver estructura del formulario"
+            >
+              <FileText className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Ver Formulario</span>
+              <span className="sm:hidden ml-1">Formulario</span>
+            </Link>
+            <button
+              onClick={handleSignOut}
+              className="group flex flex-1 sm:flex-none justify-center items-center px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-white bg-slate-800 hover:bg-red-500/90 rounded-xl transition-all duration-300 border border-slate-700 hover:border-red-500 shadow-sm"
+            >
+              <LogOut className="h-4 w-4 sm:mr-2 group-hover:scale-110 transition-transform" />
+              <span className="hidden sm:inline">Cerrar Sesión</span>
+              <span className="sm:hidden ml-1">Salir</span>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -185,6 +199,7 @@ export default function AdminDashboard() {
                 <tr>
                   <th className="px-6 py-4">Establecimiento</th>
                   <th className="px-6 py-4">Red de Salud</th>
+                  <th className="px-6 py-4">Sector</th>
                   <th className="px-6 py-4">Fecha</th>
                   <th className="px-6 py-4 text-center">Estado</th>
                   <th className="px-6 py-4 text-center">Puntaje</th>
@@ -210,6 +225,11 @@ export default function AdminDashboard() {
                     <tr key={ev.id} className="hover:bg-slate-750 transition-colors group">
                       <td className="px-6 py-4 font-bold text-white">{ev.establecimiento_salud}</td>
                       <td className="px-6 py-4">{ev.red_salud || '-'}</td>
+                      <td className="px-6 py-4">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-700 text-slate-300">
+                          {ev.usuarios?.sector || '-'}
+                        </span>
+                      </td>
                       <td className="px-6 py-4">
                         {new Date(ev.fecha_evaluacion).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
                       </td>

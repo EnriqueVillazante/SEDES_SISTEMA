@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Save, CheckCircle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Save, CheckCircle, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../../lib/supabase';
 import { calculateScores } from '../../utils/scoring';
@@ -18,6 +18,14 @@ export default function EvaluacionForm() {
   const [profile, setProfile] = useState<any>(null);
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+
+  const goBack = () => {
+    if (profile?.rol === 'ADMINISTRADOR') {
+      navigate('/admin');
+    } else {
+      navigate('/');
+    }
+  };
 
   const totalSteps = 3;
 
@@ -169,7 +177,7 @@ export default function EvaluacionForm() {
       if (error) throw error;
 
       toast.success('¡Evaluación finalizada y guardada exitosamente!');
-      navigate('/');
+      goBack();
     } catch (error: any) {
       toast.error(error.message || 'Error al guardar la evaluación');
     } finally {
@@ -178,25 +186,37 @@ export default function EvaluacionForm() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 py-10 px-4 sm:px-6 lg:px-8 font-sans">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-slate-50 font-sans relative">
+      {/* Fondo Decorativo Superior */}
+      <div className="absolute top-0 inset-x-0 h-72 bg-gradient-to-br from-teal-800 via-teal-700 to-teal-900 z-0">
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-slate-50"></div>
+      </div>
+
+      <div className="max-w-4xl mx-auto relative z-10 py-10 px-4 sm:px-6 lg:px-8">
         
         {/* Cabecera superior */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-black text-slate-800 tracking-tight">Nueva Evaluación</h1>
-            <p className="text-slate-500 font-medium">Complete los criterios de evaluación del establecimiento.</p>
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-8 gap-4">
+          <div className="flex items-center space-x-4">
+            <div className="p-3 bg-white/10 backdrop-blur-sm rounded-2xl shadow-inner border border-white/20">
+              <FileText className="h-8 w-8 text-white drop-shadow-md" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-black text-white tracking-tight drop-shadow-sm">Evaluación Institucional</h1>
+              <p className="text-teal-100 font-medium text-sm mt-1">Complete los criterios de evaluación del establecimiento.</p>
+            </div>
           </div>
           <button 
-            onClick={() => navigate('/')}
-            className="px-4 py-2 text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors shadow-sm"
+            onClick={goBack}
+            className="group flex items-center justify-center px-4 py-2.5 text-sm font-bold text-slate-700 bg-white/90 hover:bg-white backdrop-blur-md border border-white/50 rounded-xl transition-all shadow-lg hover:shadow-xl"
           >
+            <ArrowLeft className="w-4 h-4 mr-2 text-slate-400 group-hover:-translate-x-1 transition-transform" />
             Cancelar y Volver
           </button>
         </div>
 
         {/* Contenedor Principal del Formulario */}
-        <div className="bg-white shadow-xl shadow-slate-200/50 rounded-3xl border border-slate-100 overflow-hidden">
+        <div className="bg-white shadow-2xl shadow-teal-900/10 rounded-3xl border border-slate-100 overflow-hidden backdrop-blur-xl">
           
           <div className="px-6 sm:px-10 py-6 bg-slate-50 border-b border-slate-100">
             <StepProgressBar currentStep={currentStep} totalSteps={totalSteps} />
@@ -219,28 +239,27 @@ export default function EvaluacionForm() {
               </div>
 
             </form>
-          </div>
-
-          {/* Barra inferior de botones (Controles) */}
-          <div className="px-6 sm:px-10 py-6 bg-slate-50 border-t border-slate-100 flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-4">
+                  {/* Barra inferior de botones (Controles) */}
+          <div className="px-6 sm:px-10 py-6 bg-slate-50/80 backdrop-blur-sm border-t border-slate-100 flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-4">
             
             <button
               onClick={prevStep}
               disabled={currentStep === 1}
-              className={`w-full sm:w-auto flex items-center justify-center px-5 py-3 sm:py-2.5 text-sm font-bold rounded-xl transition-all ${
+              className={`w-full sm:w-auto flex items-center justify-center px-5 py-3 sm:py-2.5 text-sm font-bold rounded-xl transition-all duration-300 ${
                 currentStep === 1 
                   ? 'text-slate-400 bg-slate-100 cursor-not-allowed' 
-                  : 'text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 shadow-sm'
+                  : 'text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 shadow-sm hover:shadow group'
               }`}
             >
-              <ArrowLeft className="w-4 h-4 mr-2" /> Atrás
+              <ArrowLeft className={`w-4 h-4 mr-2 ${currentStep !== 1 && 'group-hover:-translate-x-1 transition-transform'}`} /> 
+              Atrás
             </button>
 
             <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
               <button
                 type="button"
                 onClick={handleSaveDraft}
-                className="w-full sm:w-auto flex items-center justify-center px-5 py-3 sm:py-2.5 text-sm font-bold text-teal-700 bg-teal-50 border border-teal-200 hover:bg-teal-100 rounded-xl transition-colors shadow-sm"
+                className="w-full sm:w-auto flex items-center justify-center px-5 py-3 sm:py-2.5 text-sm font-bold text-teal-700 bg-teal-50 border border-teal-200 hover:bg-teal-100 hover:border-teal-300 rounded-xl transition-all shadow-sm hover:shadow"
               >
                 <Save className="w-4 h-4 mr-2" /> Guardar Borrador
               </button>
@@ -249,27 +268,26 @@ export default function EvaluacionForm() {
                 <button
                   type="button"
                   onClick={nextStep}
-                  className="w-full sm:w-auto flex items-center justify-center px-6 py-3 sm:py-2.5 text-sm font-bold text-white bg-teal-600 hover:bg-teal-700 rounded-xl transition-colors shadow-md"
+                  className="w-full sm:w-auto flex items-center justify-center px-6 py-3 sm:py-2.5 text-sm font-bold text-white bg-teal-600 hover:bg-teal-500 rounded-xl transition-all shadow-md hover:shadow-lg group"
                 >
-                  Siguiente <ArrowRight className="w-4 h-4 ml-2" />
+                  Siguiente <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
                 </button>
               ) : (
                 <button
                   type="button"
                   onClick={handleSubmitFinal}
                   disabled={isSubmitting}
-                  className="w-full sm:w-auto flex items-center justify-center px-6 py-3 sm:py-2.5 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors shadow-md disabled:opacity-70"
+                  className="w-full sm:w-auto flex items-center justify-center px-6 py-3 sm:py-2.5 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl transition-all shadow-md hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed group"
                 >
                   {isSubmitting ? (
                      <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                   ) : (
-                    <>Finalizar y Enviar <CheckCircle className="w-4 h-4 ml-2" /></>
+                    <>Finalizar y Enviar <CheckCircle className="w-4 h-4 ml-2 group-hover:scale-110 transition-transform" /></>
                   )}
                 </button>
               )}
             </div>
-
-          </div>
+          </div>     </div>
 
         </div>
       </div>

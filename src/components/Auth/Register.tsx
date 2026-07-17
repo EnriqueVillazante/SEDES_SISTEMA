@@ -5,7 +5,7 @@ import * as z from 'zod';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { toast } from 'sonner';
-import { Mail, Lock, User, Phone, Briefcase, Building, MapPin, Activity } from 'lucide-react';
+import { Mail, Lock, User, Phone, Briefcase, Building, MapPin, Activity, Landmark } from 'lucide-react';
 
 const registerSchema = z.object({
   email: z.string().email({ message: 'Correo electrónico inválido' }),
@@ -16,6 +16,7 @@ const registerSchema = z.object({
   establecimiento_salud: z.string().min(2, { message: 'Requerido' }),
   red_salud: z.string().min(2, { message: 'Requerido' }),
   nivel_atencion: z.string().min(1, { message: 'Requerido' }),
+  sector: z.enum(['Público', 'SSCP', 'Privado'], { message: 'Seleccione un sector' }),
 });
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
@@ -46,6 +47,7 @@ export default function Register() {
             establecimiento_salud: data.establecimiento_salud,
             red_salud: data.red_salud,
             nivel_atencion: data.nivel_atencion,
+            sector: data.sector,
           }
         }
       });
@@ -86,6 +88,32 @@ export default function Register() {
     </div>
   );
 
+  const SelectField = ({ label, id, icon: Icon, options, registerName, error }: any) => (
+    <div>
+      <label className="block text-sm font-semibold text-slate-700 mb-1" htmlFor={id}>
+        {label}
+      </label>
+      <div className="relative rounded-xl shadow-sm">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <Icon className="h-5 w-5 text-slate-400" />
+        </div>
+        <select
+          id={id}
+          className={`block w-full pl-10 pr-3 py-3.5 text-sm bg-slate-50/90 backdrop-blur-sm border rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all shadow-inner appearance-none ${error ? 'border-red-400 text-red-900' : 'border-slate-300 text-slate-900 font-medium'
+            }`}
+          {...register(registerName)}
+          defaultValue=""
+        >
+          <option value="" disabled hidden>Seleccione una opción</option>
+          {options.map((opt: string) => (
+            <option key={opt} value={opt}>{opt}</option>
+          ))}
+        </select>
+      </div>
+      {error && <p className="mt-1.5 text-xs font-medium text-red-600">{error.message}</p>}
+    </div>
+  );
+
   return (
     <div className="min-h-screen relative flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       {/* Background Image & Overlay */}
@@ -97,9 +125,9 @@ export default function Register() {
 
       <div className="relative z-10 w-full max-w-3xl mx-auto px-4 sm:px-0">
         <div className="flex justify-center mb-4">
-          <img 
-            src="/logo.png" 
-            alt="Logo SEDES" 
+          <img
+            src="/logo.png"
+            alt="Logo SEDES"
             className="h-24 w-auto object-contain drop-shadow-2xl"
           />
         </div>
@@ -129,6 +157,7 @@ export default function Register() {
                 <h3 className="text-lg font-bold text-slate-800">Datos Institucionales</h3>
               </div>
 
+              <SelectField label="Sector" id="sector" icon={Landmark} options={['Público', 'SSCP', 'Privado']} registerName="sector" error={errors.sector} />
               <InputField label="Cargo" id="cargo" type="text" icon={Briefcase} placeholder="Ej. Médico General" registerName="cargo" error={errors.cargo} />
               <InputField label="Establecimiento de Salud" id="establecimiento_salud" type="text" icon={Building} placeholder="Ej. Hospital Obrero" registerName="establecimiento_salud" error={errors.establecimiento_salud} />
               <InputField label="Red de Salud" id="red_salud" type="text" icon={MapPin} placeholder="Ej. Red de Salud Centro" registerName="red_salud" error={errors.red_salud} />

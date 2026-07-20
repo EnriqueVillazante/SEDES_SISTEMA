@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { LogOut, Activity, ShieldAlert, CheckCircle, AlertTriangle, FileText, Search, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
+import { formatDate } from '../../utils/dateUtils';
 
 export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
@@ -231,7 +232,7 @@ export default function AdminDashboard() {
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        {new Date(ev.fecha_evaluacion).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        {formatDate(ev.fecha_evaluacion, { day: '2-digit', month: 'short', year: 'numeric' })}
                       </td>
                       <td className="px-6 py-4 text-center">
                         <span className={`text-xs font-bold px-2.5 py-1 rounded-md uppercase tracking-wider ${

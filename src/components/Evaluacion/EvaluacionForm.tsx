@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Save, CheckCircle, FileText } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Save, CheckCircle, FileText, Download } from 'lucide-react';
+import { generatePDF } from '../../utils/pdfGenerator';
 import { toast } from 'sonner';
 import { supabase } from '../../lib/supabase';
 import { calculateScores } from '../../utils/scoring';
@@ -14,6 +15,9 @@ import Seccion3 from './Seccion3';
 export default function EvaluacionForm() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [submittedEvalData, setSubmittedEvalData] = useState<any>(null);
+  const [isExporting, setIsExporting] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [profile, setProfile] = useState<any>(null);
   const { id } = useParams<{ id: string }>();
@@ -163,27 +167,70 @@ export default function EvaluacionForm() {
         estado: 'FINALIZADO'
       };
 
-      let error;
+      let finalData;
+      let reqError;
+
       if (id) {
-        // Finalizar borrador existente
-        const { error: updateError } = await supabase.from('evaluaciones').update(evalDataToSave).eq('id', id);
-        error = updateError;
+        const { data, error } = await supabase.from('evaluaciones').update(evalDataToSave).eq('id', id).select('*, usuarios(*)').single();
+        finalData = data;
+        reqError = error;
       } else {
-        // Finalizar nueva evaluación
-        const { error: insertError } = await supabase.from('evaluaciones').insert(evalDataToSave);
-        error = insertError;
+        const { data, error } = await supabase.from('evaluaciones').insert(evalDataToSave).select('*, usuarios(*)').single();
+        finalData = data;
+        reqError = error;
       }
 
-      if (error) throw error;
+      if (reqError) throw reqError;
 
       toast.success('¡Evaluación finalizada y guardada exitosamente!');
-      goBack();
+      setSubmittedEvalData(finalData);
+      setIsSuccess(true);
     } catch (error: any) {
       toast.error(error.message || 'Error al guardar la evaluación');
     } finally {
       setIsSubmitting(false);
     }
   };
+
+
+  if (isSuccess && submittedEvalData) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center border border-slate-100">
+          <div className="mx-auto w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mb-6">
+            <CheckCircle className="h-10 w-10 text-emerald-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-800 mb-2">¡Formulario Enviado Exitosamente!</h2>
+          <p className="text-slate-600 mb-8">
+            Los datos han sido registrados en el sistema bajo el establecimiento <strong>{profile?.establecimiento_salud}</strong>.
+          </p>
+          
+          <div className="space-y-4">
+            <button
+              onClick={() => generatePDF(submittedEvalData, setIsExporting)}
+              disabled={isExporting}
+              className="w-full flex items-center justify-center space-x-2 bg-teal-700 hover:bg-teal-800 text-white py-3 px-4 rounded-xl font-medium transition-colors disabled:opacity-50"
+            >
+              {isExporting ? (
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+              ) : (
+                <Download className="h-5 w-5" />
+              )}
+              <span>{isExporting ? 'Generando PDF...' : 'Descargar PDF de Respaldo'}</span>
+            </button>
+            
+            <button
+              onClick={goBack}
+              className="w-full flex items-center justify-center space-x-2 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 px-4 rounded-xl font-medium transition-colors"
+            >
+              <ArrowLeft className="h-5 w-5" />
+              <span>Volver al Inicio</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans relative">

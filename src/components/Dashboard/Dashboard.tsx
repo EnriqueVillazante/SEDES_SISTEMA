@@ -1,16 +1,42 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { LogOut, Activity, Building, ShieldCheck, Briefcase, MapPin, Phone, Mail, Calendar, Clock, ChevronRight, Landmark } from 'lucide-react';
+import { LogOut, Activity, Building, ShieldCheck, Briefcase, MapPin, Phone, Mail, Calendar, Clock, ChevronRight, Landmark, Download } from 'lucide-react';
+import { generatePDF } from '../../utils/pdfGenerator';
 import { toast } from 'sonner';
+import { formatDate } from '../../utils/dateUtils';
 
 export default function Dashboard() {
   const [profile, setProfile] = useState<any>(null);
   const [evaluaciones, setEvaluaciones] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [currentDate, setCurrentDate] = useState('');
 
+
+  const handleDownloadPDF = async (evalId: string) => {
+    try {
+      setDownloadingId(evalId);
+      const { data, error } = await supabase
+        .from('evaluaciones')
+        .select('*, usuarios(*)')
+        .eq('id', evalId)
+        .single();
+        
+      if (error) throw error;
+      if (data) {
+        await generatePDF(data);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Error al descargar el PDF');
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
   useEffect(() => {
+
     // Establecer fecha actual formateada
     const dateOptions: Intl.DateTimeFormatOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     setCurrentDate(new Date().toLocaleDateString('es-ES', dateOptions));
@@ -308,7 +334,7 @@ export default function Dashboard() {
                           {ev.estado}
                         </span>
                         <span className="text-sm font-semibold text-slate-500">
-                          {new Date(ev.fecha_evaluacion).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
+                          {formatDate(ev.fecha_evaluacion, { day: 'numeric', month: 'long', year: 'numeric' })}
                         </span>
                       </div>
                       <h4 className="font-bold text-slate-700">
@@ -318,15 +344,30 @@ export default function Dashboard() {
                       </h4>
                     </div>
                     
-                    <div className="flex-shrink-0">
+                    <div className="flex-shrink-0 flex items-center space-x-2">
                       {ev.estado === 'BORRADOR' ? (
                         <Link to={`/evaluacion/editar/${ev.id}`} className="w-full sm:w-auto inline-flex justify-center items-center px-4 py-2 bg-amber-500 text-white text-sm font-bold rounded-xl hover:bg-amber-600 transition-colors shadow-sm">
                           Continuar Evaluación
                         </Link>
                       ) : (
-                        <button className="w-full sm:w-auto inline-flex justify-center items-center px-4 py-2 bg-slate-100 text-slate-600 text-sm font-bold rounded-xl hover:bg-slate-200 transition-colors opacity-50 cursor-not-allowed" title="Visualización próximamente">
-                          Ver Detalles
-                        </button>
+                        <>
+                          <button 
+                            onClick={() => handleDownloadPDF(ev.id)}
+                            disabled={downloadingId === ev.id}
+                            className="w-full sm:w-auto inline-flex justify-center items-center px-4 py-2 bg-teal-600 text-white text-sm font-bold rounded-xl hover:bg-teal-700 transition-colors shadow-sm disabled:opacity-50"
+                            title="Descargar PDF"
+                          >
+                            {downloadingId === ev.id ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            ) : (
+                              <Download className="h-4 w-4 mr-2" />
+                            )}
+                            Descargar
+                          </button>
+                          <button className="w-full sm:w-auto inline-flex justify-center items-center px-4 py-2 bg-slate-100 text-slate-600 text-sm font-bold rounded-xl hover:bg-slate-200 transition-colors opacity-50 cursor-not-allowed" title="Visualización próximamente">
+                            Ver Detalles
+                          </button>
+                        </>
                       )}
                     </div>
                   </div>

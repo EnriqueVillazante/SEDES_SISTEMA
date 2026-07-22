@@ -38,6 +38,8 @@ export default function EvaluacionForm() {
     trigger,
     getValues,
     reset,
+    setValue,
+    watch,
     formState: { errors }
   } = useForm({
     defaultValues: {
@@ -278,7 +280,7 @@ export default function EvaluacionForm() {
               </div>
               
               <div className={currentStep === 2 ? 'block' : 'hidden'}>
-                <Seccion2 register={register} errors={errors} />
+                <Seccion2 register={register} errors={errors} setValue={setValue} watch={watch} />
               </div>
 
               <div className={currentStep === 3 ? 'block' : 'hidden'}>

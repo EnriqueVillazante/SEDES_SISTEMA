@@ -1,11 +1,14 @@
-import type { UseFormRegister, FieldErrors } from 'react-hook-form';
+import type { UseFormRegister, FieldErrors, UseFormSetValue, UseFormWatch } from 'react-hook-form';
+import ImageUploader from '../common/ImageUploader';
 
 interface Seccion2Props {
   register: UseFormRegister<any>;
   errors: FieldErrors<any>;
+  setValue: UseFormSetValue<any>;
+  watch: UseFormWatch<any>;
 }
 
-export default function Seccion2({ register, errors }: Seccion2Props) {
+export default function Seccion2({ register, errors, setValue, watch }: Seccion2Props) {
   const subcomites = [
     { id: 'residuos', title: '1. Residuos Hospitalarios' },
     { id: 'bioseguridad', title: '2. Bioseguridad' },
@@ -111,6 +114,15 @@ export default function Seccion2({ register, errors }: Seccion2Props) {
                   ⚠️ {(errors.seccion_2_respuestas as any)[`${sub.id}_liderazgo`]?.message}
                 </p>
               )}
+              
+              {/* Image Uploader for this sub-committee */}
+              <ImageUploader 
+                bucketName="comprobantes"
+                fieldPath={`seccion_2_respuestas.${sub.id}_comprobantes`}
+                setValue={setValue}
+                watch={watch}
+                maxImages={5}
+              />
             </div>
             
           </div>

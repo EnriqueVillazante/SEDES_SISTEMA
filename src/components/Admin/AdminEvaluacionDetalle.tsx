@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { ArrowLeft, CheckCircle, AlertTriangle, ShieldAlert, FileText, LayoutList, Eye, X, Activity } from 'lucide-react';
+import { ArrowLeft, CheckCircle, AlertTriangle, ShieldAlert, FileText, LayoutList, Eye, X, Activity, Image as ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import GraficoResultados from './GraficoResultados';
 import GraficoSeccion2 from './GraficoSeccion2';
@@ -20,6 +20,7 @@ export default function AdminEvaluacionDetalle() {
   const [chart3Subcomite, setChart3Subcomite] = useState<'residuos' | 'bioseguridad' | 'iaas' | 'cai' | null>(null);
   const [showChartGlobal, setShowChartGlobal] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -298,6 +299,27 @@ export default function AdminEvaluacionDetalle() {
                         <span className="text-slate-500 text-xs block mb-1">Liderazgo:</span>
                         <p className="text-slate-300 text-sm italic">{ev.seccion_2_respuestas?.[`${sub}_liderazgo`] || 'Sin especificar'}</p>
                       </div>
+
+                      {/* Comprobantes Fotográficos */}
+                      {ev.seccion_2_respuestas?.[`${sub}_comprobantes`] && ev.seccion_2_respuestas?.[`${sub}_comprobantes`].length > 0 && (
+                        <div className="pt-3 mt-3 border-t border-slate-700/50">
+                          <span className="text-slate-500 text-xs flex items-center mb-2">
+                            <ImageIcon className="w-3 h-3 mr-1 text-teal-500" /> Comprobantes Adjuntos:
+                          </span>
+                          <div className="flex flex-wrap gap-2">
+                            {ev.seccion_2_respuestas[`${sub}_comprobantes`].map((url: string, idx: number) => (
+                              <button 
+                                key={idx} 
+                                onClick={() => setPreviewImage(url)}
+                                className="block w-12 h-12 rounded-md overflow-hidden border border-slate-600 hover:border-teal-400 hover:scale-110 transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                title="Ver comprobante en tamaño completo"
+                              >
+                                <img src={url} alt={`Comprobante ${idx + 1}`} className="w-full h-full object-cover" />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -519,6 +541,30 @@ export default function AdminEvaluacionDetalle() {
             </div>
           </div>
         )}
+
+      {/* Modal de Previsualización de Imagen */}
+      {previewImage && (
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div className="relative max-w-5xl w-full max-h-[95vh] flex items-center justify-center">
+            <button 
+              onClick={(e) => { e.stopPropagation(); setPreviewImage(null); }}
+              className="absolute -top-12 right-0 sm:-right-12 p-3 bg-red-500/20 hover:bg-red-500 text-white rounded-full transition-all shadow-lg backdrop-blur-sm"
+              title="Cerrar"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <img 
+              src={previewImage} 
+              alt="Previsualización de comprobante" 
+              className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl border border-slate-800"
+              onClick={(e) => e.stopPropagation()} 
+            />
+          </div>
+        </div>
+      )}
 
       </main>
     </div>

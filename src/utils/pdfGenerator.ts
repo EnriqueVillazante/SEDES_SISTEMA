@@ -80,8 +80,9 @@ export const generatePDF = async (ev: any, setIsExporting?: (val: boolean) => vo
 
     // 1. Cargar Logo y Cabecera Institucional
     try {
-      const logoUrl = '/logo.png';
+      const logoUrl = window.location.origin + '/logo.png';
       const img = new Image();
+      img.crossOrigin = 'Anonymous';
       img.src = logoUrl;
       await new Promise((resolve, reject) => {
         img.onload = resolve;

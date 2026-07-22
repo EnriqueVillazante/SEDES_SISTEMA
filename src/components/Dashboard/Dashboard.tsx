@@ -188,10 +188,17 @@ export default function Dashboard() {
                   <span className="text-sm font-semibold text-slate-600 group-hover:text-teal-700">Actualizar Datos</span>
                   <ChevronRight className="h-4 w-4 text-slate-400 group-hover:text-teal-500" />
                 </button>
-                <Link to="/evaluacion/nueva" className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:border-teal-300 hover:bg-teal-50 transition-colors group">
-                  <span className="text-sm font-semibold text-slate-600 group-hover:text-teal-700">Añadir Formulario</span>
-                  <ChevronRight className="h-4 w-4 text-slate-400 group-hover:text-teal-500" />
-                </Link>
+                {evaluaciones.length === 0 ? (
+                  <Link to="/evaluacion/nueva" className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:border-teal-300 hover:bg-teal-50 transition-colors group">
+                    <span className="text-sm font-semibold text-slate-600 group-hover:text-teal-700">Añadir Formulario</span>
+                    <ChevronRight className="h-4 w-4 text-slate-400 group-hover:text-teal-500" />
+                  </Link>
+                ) : (
+                  <div className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 bg-slate-50 cursor-not-allowed opacity-70" title="Solo puedes registrar una evaluación por cuenta">
+                    <span className="text-sm font-semibold text-slate-500">Añadir Formulario (Límite alcanzado)</span>
+                    <ShieldCheck className="h-4 w-4 text-emerald-500" />
+                  </div>
+                )}
               </div>
             </div>
           </div>

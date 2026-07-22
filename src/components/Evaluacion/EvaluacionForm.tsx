@@ -57,6 +57,21 @@ export default function EvaluacionForm() {
         setUserId(user.id);
         const { data } = await supabase.from('usuarios').select('*').eq('id', user.id).single();
         if (data) setProfile(data);
+
+        // Security check: Only one evaluation per user
+        if (!id) {
+          const { data: existing } = await supabase
+            .from('evaluaciones')
+            .select('id')
+            .eq('usuario_id', user.id)
+            .limit(1);
+            
+          if (existing && existing.length > 0) {
+            toast.error('Límite alcanzado: Ya has registrado una evaluación para este establecimiento.');
+            navigate('/');
+            return;
+          }
+        }
       }
 
       // Si hay un ID en la URL, cargar los datos de esa evaluación (Modo Edición/Borrador)

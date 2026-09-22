@@ -8,6 +8,8 @@ import Dashboard from './components/Dashboard/Dashboard';
 import EvaluacionForm from './components/Evaluacion/EvaluacionForm';
 import AdminDashboard from './components/Admin/AdminDashboard';
 import AdminEvaluacionDetalle from './components/Admin/AdminEvaluacionDetalle';
+import EvaluacionDetalle from './components/Evaluacion/EvaluacionDetalle';
+import NuevoPlanMejora from './components/PlanMejora/NuevoPlanMejora';
 
 function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -66,6 +68,8 @@ function App() {
           <Route path="/admin/evaluacion/:id" element={profile?.rol === 'ADMINISTRADOR' ? <AdminEvaluacionDetalle /> : <Navigate to="/" replace />} />
           <Route path="/evaluacion/nueva" element={<EvaluacionForm />} />
           <Route path="/evaluacion/editar/:id" element={<EvaluacionForm />} />
+          <Route path="/evaluacion/detalle/:id" element={<EvaluacionDetalle />} />
+          <Route path="/plan-mejora/nuevo" element={<NuevoPlanMejora />} />
           <Route path="*" element={<Navigate to={profile?.rol === 'ADMINISTRADOR' ? '/admin' : '/'} replace />} />
         </>
       )}

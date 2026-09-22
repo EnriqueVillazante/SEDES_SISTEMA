@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { ArrowLeft, CheckCircle, AlertTriangle, ShieldAlert, FileText, LayoutList, ChevronDown, ChevronUp, Award, Star, Activity, TrendingUp, Building2, MapPin } from 'lucide-react';
+import { ArrowLeft, CheckCircle, AlertTriangle, ShieldAlert, LayoutList, ChevronDown, ChevronUp, Award, Star, Activity, TrendingUp, Building2, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
-import { formatDate } from '../../utils/dateUtils';
 
 export default function EvaluacionDetalle() {
   const { id } = useParams<{ id: string }>();

@@ -1,4 +1,4 @@
-import { useEffect, useState, Fragment } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { LogOut, Activity, ShieldAlert, CheckCircle, AlertTriangle, FileText, Search, Eye, LayoutDashboard, Bell, Send, Image as ImageIcon, MessageSquare, Calendar, ChevronDown, ChevronUp, Clock, Users, Paperclip, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';

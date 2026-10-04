@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { getQuestionById, type EvaluationQuestion } from '../../utils/evaluationDictionary';
-import { Loader2, AlertCircle, FileText, CheckCircle2, ChevronRight, ChevronLeft, Save, Edit3, UserPlus, Upload, X } from 'lucide-react';
+import { Loader2, AlertCircle, FileText, CheckCircle2, Save, Edit3, UserPlus, Upload, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import imageCompression from 'browser-image-compression';
@@ -33,7 +33,6 @@ export default function NuevoPlanMejora() {
   const [evaluacionId, setEvaluacionId] = useState<string | null>(null);
   const [usuarioId, setUsuarioId] = useState<string | null>(null);
   const [items, setItems] = useState<PlanMejoraItem[]>([]);
-  const [currentStep, setCurrentStep] = useState<number>(1);
   const [isSuccess, setIsSuccess] = useState<boolean>(false);
   const [evalMetaData, setEvalMetaData] = useState({ establecimiento_salud: '', fecha_evaluacion: '', nivel_semaforo: '' });
 
@@ -59,6 +58,18 @@ export default function NuevoPlanMejora() {
         throw new Error("No hay usuario autenticado");
       }
       setUsuarioId(user.id);
+
+      // Check for preview mode
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('preview') === 'true') {
+        setItems([
+          { hallazgo: { id: 'test1', sectionId: '1', title: 'Falta de protocolos de bioseguridad visibles', text: 'El establecimiento no cuenta con protocolos de bioseguridad visibles', sectionTitle: 'Bioseguridad' } as any },
+          { hallazgo: { id: 'test2', sectionId: '2', title: 'Extintores vencidos', text: 'Los extintores del área de farmacia se encuentran vencidos', sectionTitle: 'Infraestructura' } as any }
+        ]);
+        setEvalMetaData({ establecimiento_salud: 'Previsualización', fecha_evaluacion: new Date().toISOString(), nivel_semaforo: 'REGULAR' });
+        setLoading(false);
+        return;
+      }
 
       // Fetch the latest finalized evaluation for this user
       const { data, error: evalError } = await supabase
@@ -126,41 +137,29 @@ export default function NuevoPlanMejora() {
     setItems(newItems);
   };
 
-  const canProceedToStep2 = () => {
-    return items.every(item => item.accion_correctiva && item.accion_correctiva.trim() !== '' && item.recursos_necesarios && item.recursos_necesarios.trim() !== '');
-  };
-
-  const canProceedToStep3 = () => {
-    return globalResp1.trim() !== '' && globalPlazo !== '' && globalPlazo > 0;
-  };
-
-  const handleNextStep = () => {
-    if (currentStep === 1) {
-      if (!canProceedToStep2()) {
-        toast.error('Debe completar la acción correctiva y recursos para TODOS los hallazgos.');
-        return;
-      }
+  const validateForm = () => {
+    const isStep1Valid = items.every(item => item.accion_correctiva && item.accion_correctiva.trim() !== '' && item.recursos_necesarios && item.recursos_necesarios.trim() !== '');
+    if (!isStep1Valid) {
+      toast.error('Debe completar la acción correctiva y recursos para TODOS los hallazgos.');
+      return false;
     }
-    if (currentStep === 2) {
-      if (!canProceedToStep3()) {
-        toast.error('Debe asignar al Director Técnico y el plazo general en días.');
-        return;
-      }
+    
+    const isStep2Valid = globalResp1.trim() !== '' && globalPlazo !== '' && globalPlazo > 0;
+    if (!isStep2Valid) {
+      toast.error('Debe asignar al Director Técnico y el plazo general en días.');
+      return false;
     }
-    setCurrentStep(prev => prev + 1);
-    window.scrollTo(0, 0);
-  };
-
-  const handlePrevStep = () => {
-    setCurrentStep(prev => prev - 1);
-    window.scrollTo(0, 0);
+    
+    if (evidenceFiles.length === 0) {
+      toast.error('Debe subir al menos una evidencia obligatoria.');
+      return false;
+    }
+    
+    return true;
   };
 
   const handleSaveFinal = async () => {
-    if (evidenceFiles.length === 0) {
-      toast.error('Debe subir al menos una evidencia obligatoria.');
-      return;
-    }
+    if (!validateForm()) return;
     try {
       setSaving(true);
       
@@ -222,6 +221,7 @@ export default function NuevoPlanMejora() {
 
       if (error) throw error;
 
+      toast.success('¡Plan de Mejora registrado correctamente!');
       setIsSuccess(true);
       window.scrollTo(0, 0);
     } catch (err: any) {
@@ -289,10 +289,10 @@ export default function NuevoPlanMejora() {
             </button>
             
             <button 
-              onClick={() => navigate('/')}
+              onClick={() => navigate(-1)}
               className="inline-flex items-center px-8 py-4 bg-slate-100 text-slate-700 font-bold rounded-2xl hover:bg-slate-200 transition-colors w-full sm:w-auto text-lg"
             >
-              Volver al Inicio
+              Volver
             </button>
           </div>
         </div>
@@ -301,272 +301,261 @@ export default function NuevoPlanMejora() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 animate-fade-in pb-20 px-4 sm:px-0">
+    <div className="min-h-screen bg-slate-50 py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-4xl mx-auto space-y-6 animate-fade-in pb-20">
 
-      {/* Header */}
-      <div className="bg-gradient-to-r from-teal-800 to-teal-600 p-8 rounded-3xl text-white shadow-lg relative overflow-hidden">
-        <div className="relative z-10">
-          <h1 className="text-3xl font-black mb-3">Plan de Mejora</h1>
-          <p className="text-teal-100 text-lg font-medium max-w-2xl">
-            Complete los 3 pasos para formular acciones correctivas a los hallazgos de su última evaluación.
-          </p>
+        {/* Header Documento */}
+        <div className="bg-slate-900 p-6 sm:p-8 rounded-t-2xl text-white shadow-md relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between border-b-4 border-amber-500">
+          <div className="relative z-10">
+            <h1 className="text-2xl sm:text-3xl font-bold mb-2 tracking-tight">Plan de Acción Correctiva</h1>
+            <p className="text-slate-300 text-sm md:text-base max-w-2xl">
+              Formulario oficial para el planteamiento de acciones y corrección de hallazgos.
+            </p>
+          </div>
+          <div className="mt-4 md:mt-0 relative z-10 bg-slate-800/50 p-4 rounded-xl border border-slate-700 backdrop-blur-sm w-full md:w-auto">
+             <p className="text-xs text-slate-400 uppercase tracking-widest mb-1">Establecimiento</p>
+             <p className="font-bold text-base sm:text-lg text-white">{evalMetaData.establecimiento_salud || 'No definido'}</p>
+          </div>
+          <FileText className="absolute right-0 top-0 -translate-y-1/4 translate-x-1/4 h-64 w-64 text-white/5 pointer-events-none" />
         </div>
-        <FileText className="absolute right-8 top-1/2 -translate-y-1/2 h-32 w-32 text-white/10" />
-      </div>
 
-      {/* Stepper */}
-      <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
-        <div className="flex justify-between items-center relative">
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-slate-100 rounded-full z-0"></div>
-          <div className={`absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-teal-500 rounded-full z-0 transition-all duration-500`} style={{ width: currentStep === 1 ? '0%' : currentStep === 2 ? '50%' : '100%' }}></div>
-
-          {[1, 2, 3].map((step) => (
-            <div key={step} className="relative z-10 flex flex-col items-center">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg transition-colors shadow-sm
-                ${step < currentStep ? 'bg-teal-600 text-white' : step === currentStep ? 'bg-teal-500 text-white ring-4 ring-teal-100' : 'bg-slate-100 text-slate-400 border border-slate-200'}
-              `}>
-                {step < currentStep ? <CheckCircle2 className="h-6 w-6" /> : step}
-              </div>
-              <span className={`mt-2 text-xs font-bold uppercase tracking-wider ${step <= currentStep ? 'text-teal-800' : 'text-slate-400'}`}>
-                {step === 1 ? 'Hallazgos' : step === 2 ? 'Responsables' : 'Evidencias'}
-              </span>
-            </div>
-          ))}
+      {/* Warning */}
+      <div className="bg-amber-50 border-l-4 border-amber-500 p-5 rounded-r-xl shadow-sm flex items-start">
+        <AlertCircle className="h-6 w-6 text-amber-500 mr-4 shrink-0 mt-0.5" />
+        <div>
+          <h3 className="text-amber-800 font-bold mb-1">Aviso Importante</h3>
+          <p className="text-amber-700 text-sm">
+            Este formulario <strong>no guarda el progreso como borrador</strong>. Si sale de la página o la recarga antes de enviar, perderá todos los datos ingresados. Asegúrese de completar todo en un solo intento.
+          </p>
         </div>
       </div>
 
       {/* Content */}
-      <div className="bg-slate-50 p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm min-h-[400px]">
+      <div className="space-y-8 min-h-[400px]">
 
         {/* STEP 1: Hallazgos e Identificación */}
-        {currentStep === 1 && (
-          <div className="space-y-6 animate-fade-in">
-            <h2 className="text-2xl font-extrabold text-slate-800 mb-6">1. Identificación y Acciones Correctivas</h2>
-            <p className="text-slate-600 mb-6 font-medium">Haga clic en cada hallazgo para redactar la acción correctiva propuesta y los recursos necesarios.</p>
-
-            <div className="grid gap-4">
-              {items.map((item, idx) => {
-                const isCompleted = item.accion_correctiva && item.recursos_necesarios;
-                return (
-                  <button
-                    key={idx}
-                    onClick={() => setActiveModalItem(idx)}
-                    className={`text-left p-5 rounded-2xl border-2 transition-all flex items-center justify-between group
-                      ${isCompleted ? 'bg-white border-green-500 shadow-sm' : 'bg-white border-slate-200 hover:border-teal-400 shadow-sm'}
-                    `}
-                  >
-                    <div className="flex-1 pr-4">
-                      <span className="text-xs font-black text-slate-400 uppercase tracking-wider block mb-1">{item.hallazgo.sectionTitle}</span>
-                      <h3 className={`font-extrabold text-lg line-clamp-1 ${isCompleted ? 'text-green-800' : 'text-slate-800'}`}>
-                        {item.hallazgo.title || item.hallazgo.text}
-                      </h3>
-                      {isCompleted && (
-                        <p className="text-sm text-slate-500 mt-2 line-clamp-1 font-medium">
-                          <span className="font-bold text-slate-700">Acción:</span> {item.accion_correctiva}
-                        </p>
-                      )}
-                    </div>
-                    <div>
-                      {isCompleted ? (
-                        <CheckCircle2 className="h-8 w-8 text-green-500" />
-                      ) : (
-                        <div className="h-10 w-10 rounded-full bg-teal-50 flex items-center justify-center group-hover:bg-teal-100 transition-colors">
-                          <Edit3 className="h-5 w-5 text-teal-600" />
-                        </div>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+        <div className="bg-white p-6 sm:p-8 rounded-b-2xl sm:rounded-xl border border-slate-200 shadow-sm space-y-6">
+          <div className="border-b border-slate-100 pb-4 mb-6">
+            <h2 className="text-xl font-bold text-slate-800 flex items-center">
+              <span className="bg-slate-900 text-white text-sm w-8 h-8 flex items-center justify-center rounded-lg mr-3">1</span>
+              Identificación de Hallazgos y Acciones
+            </h2>
+            <p className="text-slate-500 text-sm mt-2 ml-11">Declare la acción correctiva propuesta y los recursos necesarios para cada hallazgo.</p>
           </div>
-        )}
+
+          <div className="grid gap-4">
+            {items.map((item, idx) => {
+              const isCompleted = item.accion_correctiva && item.recursos_necesarios;
+              return (
+                <button
+                  key={idx}
+                  onClick={() => setActiveModalItem(idx)}
+                  className={`text-left p-5 rounded-xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between group
+                    ${isCompleted ? 'bg-slate-50 border-emerald-500/50 shadow-sm' : 'bg-white border-slate-200 hover:border-slate-400 hover:shadow-md'}
+                  `}
+                >
+                  <div className="flex-1 pr-0 sm:pr-4 mb-4 sm:mb-0 w-full">
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                      <span className="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded uppercase tracking-wider">{item.hallazgo.sectionTitle}</span>
+                      {isCompleted && <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-1 rounded uppercase tracking-wider flex items-center"><CheckCircle2 className="w-3 h-3 mr-1"/> Completado</span>}
+                    </div>
+                    <h3 className={`font-semibold text-base leading-snug ${isCompleted ? 'text-slate-700' : 'text-slate-900'}`}>
+                      {item.hallazgo.title || item.hallazgo.text}
+                    </h3>
+                    {isCompleted && (
+                      <div className="mt-3 bg-white p-3 rounded-lg border border-slate-200">
+                        <p className="text-sm text-slate-600 line-clamp-2">
+                          <span className="font-semibold text-slate-800">Acción:</span> {item.accion_correctiva}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="shrink-0 self-end sm:self-center">
+                    {isCompleted ? (
+                      <div className="px-4 py-2 bg-emerald-50 text-emerald-700 rounded-lg text-sm font-semibold border border-emerald-100 flex items-center transition-colors hover:bg-emerald-100">
+                        <Edit3 className="h-4 w-4 mr-2" /> Editar
+                      </div>
+                    ) : (
+                      <div className="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-semibold flex items-center group-hover:bg-slate-800 transition-colors shadow-sm">
+                        <Edit3 className="h-4 w-4 mr-2" /> Redactar
+                      </div>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
         {/* STEP 2: Responsables y Tiempos */}
-        {currentStep === 2 && (
-          <div className="space-y-6 animate-fade-in max-w-3xl mx-auto">
-            <h2 className="text-2xl font-extrabold text-slate-800 mb-2">2. Asignación de Responsables y Plazos</h2>
-            <p className="text-slate-600 mb-8 font-medium">Asigne a los encargados de ejecutar el plan de mejora y defina el plazo general en días. Estos responsables aplicarán para todos los hallazgos identificados.</p>
+        <div className="bg-white p-6 sm:p-8 rounded-xl border border-slate-200 shadow-sm space-y-6">
+          <div className="border-b border-slate-100 pb-4 mb-6">
+            <h2 className="text-xl font-bold text-slate-800 flex items-center">
+              <span className="bg-slate-900 text-white text-sm w-8 h-8 flex items-center justify-center rounded-lg mr-3">2</span>
+              Responsables y Plazos de Ejecución
+            </h2>
+            <p className="text-slate-500 text-sm mt-2 ml-11">Asigne a los profesionales a cargo y el plazo estimado para el cumplimiento global.</p>
+          </div>
 
-            <div className="space-y-6">
-              {/* Responsable 1 */}
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <div className="flex items-center mb-4">
-                  <div className="h-10 w-10 bg-teal-100 rounded-full flex items-center justify-center mr-4">
-                    <UserPlus className="h-5 w-5 text-teal-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-extrabold text-slate-800 text-lg">Responsable 1 <span className="text-red-500">*</span></h3>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Cargo: Director Técnico del Establecimiento</p>
-                  </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Responsable 1 */}
+            <div className="space-y-2">
+              <label className="block text-sm font-bold text-slate-700">Responsable 1 <span className="text-red-500">*</span></label>
+              <p className="text-xs text-slate-500 mb-2">Director Técnico del Establecimiento</p>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <UserPlus className="h-5 w-5 text-slate-400" />
                 </div>
-                <div className="pl-14">
-                  <input
-                    type="text"
-                    value={globalResp1}
-                    onChange={(e) => setGlobalResp1(e.target.value)}
-                    placeholder="Escriba el nombre completo..."
-                    className="w-full rounded-xl border-slate-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 bg-slate-50 p-3 font-medium"
-                  />
-                </div>
+                <input
+                  type="text"
+                  value={globalResp1}
+                  onChange={(e) => setGlobalResp1(e.target.value)}
+                  placeholder="Nombre completo"
+                  className="pl-10 w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 text-sm py-2.5"
+                />
               </div>
+            </div>
 
-              {/* Responsable 2 */}
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <div className="flex items-center mb-4">
-                  <div className="h-10 w-10 bg-slate-100 rounded-full flex items-center justify-center mr-4">
-                    <UserPlus className="h-5 w-5 text-slate-400" />
-                  </div>
-                  <div>
-                    <h3 className="font-extrabold text-slate-800 text-lg">Responsable 2 <span className="text-red-500">*</span></h3>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Cargo: Responsable de Vigilancia Epidemiológica</p>
-                  </div>
+            {/* Responsable 2 */}
+            <div className="space-y-2">
+              <label className="block text-sm font-bold text-slate-700">Responsable 2 <span className="text-slate-400 font-normal">(Opcional)</span></label>
+              <p className="text-xs text-slate-500 mb-2">Responsable de Vigilancia Epidemiológica</p>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <UserPlus className="h-5 w-5 text-slate-400" />
                 </div>
-                <div className="pl-14">
-                  <input
-                    type="text"
-                    value={globalResp2}
-                    onChange={(e) => setGlobalResp2(e.target.value)}
-                    placeholder="Escriba el nombre completo..."
-                    className="w-full rounded-xl border-slate-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 bg-slate-50 p-3 font-medium"
-                  />
-                </div>
+                <input
+                  type="text"
+                  value={globalResp2}
+                  onChange={(e) => setGlobalResp2(e.target.value)}
+                  placeholder="Nombre completo"
+                  className="pl-10 w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 text-sm py-2.5"
+                />
               </div>
+            </div>
 
-              {/* Plazo */}
-              <div className="bg-teal-50 p-6 rounded-2xl shadow-sm border border-teal-100">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div>
-                    <h3 className="font-extrabold text-teal-900 text-lg">Días de plazo para la corrección <span className="text-red-500">*</span></h3>
-                    <p className="text-sm font-medium text-teal-700">Tiempo estimado en días calendario</p>
-                  </div>
-                  <div className="flex items-center">
-                    <input
-                      type="number"
-                      min="1"
-                      value={globalPlazo}
-                      onChange={(e) => setGlobalPlazo(e.target.value ? Number(e.target.value) : '')}
-                      placeholder="Ej: 30"
-                      className="w-32 rounded-xl border-teal-200 shadow-sm focus:border-teal-500 focus:ring-teal-500 bg-white p-3 text-center text-xl font-black text-teal-800"
-                    />
-                    <span className="ml-3 font-bold text-teal-700">días</span>
-                  </div>
-                </div>
+            {/* Plazo */}
+            <div className="md:col-span-2 bg-slate-50 p-5 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-2">
+              <div>
+                <h3 className="font-bold text-slate-800">Plazo para la corrección <span className="text-red-500">*</span></h3>
+                <p className="text-sm text-slate-500">Tiempo estimado en días calendario para solventar los hallazgos</p>
               </div>
-
+              <div className="flex items-center bg-white p-1 rounded-lg border border-slate-300 shadow-sm w-full sm:w-auto">
+                <input
+                  type="number"
+                  min="1"
+                  value={globalPlazo}
+                  onChange={(e) => setGlobalPlazo(e.target.value ? Number(e.target.value) : '')}
+                  placeholder="0"
+                  className="w-full sm:w-20 border-0 focus:ring-0 text-center text-lg font-bold text-slate-800 py-2"
+                />
+                <span className="pr-4 pl-2 font-medium text-slate-500 uppercase text-xs tracking-wider border-l border-slate-100">días</span>
+              </div>
             </div>
           </div>
-        )}
+        </div>
 
         {/* STEP 3: Evidencias */}
-        {currentStep === 3 && (
-          <div className="space-y-6 animate-fade-in max-w-3xl mx-auto">
-            <h2 className="text-2xl font-extrabold text-slate-800 mb-6">3. Evidencias de Cumplimiento</h2>
-
-            <div className="bg-amber-50 p-5 rounded-2xl border border-amber-200 mb-8">
-              <p className="text-amber-800 font-medium">
-                Al momento de formular el plan, la evidencia es <span className="font-bold uppercase">No es opcional</span>. Debes subir las evidencias.
-              </p>
-            </div>
-
-            <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm text-center">
-              <div className="h-20 w-20 bg-teal-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Upload className="h-10 w-10 text-teal-600" />
-              </div>
-              <h3 className="font-extrabold text-slate-800 text-xl mb-2">Adjuntar Archivo de Evidencia</h3>
-              <p className="text-slate-500 font-medium mb-8 max-w-md mx-auto">
-                Sube hasta 5 imágenes (JPG o PNG) que respalden el cumplimiento de todas las acciones correctivas planteadas.
-              </p>
-
-              <label className="inline-flex justify-center items-center px-8 py-4 bg-slate-50 text-slate-600 font-bold rounded-2xl border-2 border-dashed border-slate-300 hover:border-teal-500 hover:bg-teal-50 hover:text-teal-700 transition-colors w-full sm:w-auto cursor-pointer">
-                <Upload className="h-5 w-5 mr-2" />
-                Seleccionar Imágenes
-                <input 
-                  type="file" 
-                  className="hidden" 
-                  multiple 
-                  accept="image/jpeg, image/png"
-                  onChange={(e) => {
-                    const files = Array.from(e.target.files || []);
-                    const validFiles = files.filter(f => f.type === 'image/jpeg' || f.type === 'image/png');
-                    
-                    if (validFiles.length !== files.length) {
-                      toast.error('Solo se permiten imágenes JPG y PNG.');
-                    }
-                    
-                    if (evidenceFiles.length + validFiles.length > 5) {
-                      toast.error('Puedes subir un máximo de 5 imágenes.');
-                      return;
-                    }
-                    
-                    setEvidenceFiles(prev => [...prev, ...validFiles]);
-                    e.target.value = ''; // reset
-                  }}
-                />
-              </label>
-
-              {evidenceFiles.length > 0 && (
-                <div className="mt-8 text-left max-w-md mx-auto">
-                  <h4 className="font-bold text-slate-700 mb-3 text-sm uppercase tracking-wider">Imágenes seleccionadas ({evidenceFiles.length}/5)</h4>
-                  <ul className="space-y-2">
-                    {evidenceFiles.map((file, idx) => (
-                      <li key={idx} className="flex justify-between items-center p-3 bg-slate-50 rounded-xl border border-slate-200">
-                        <span className="text-sm font-medium text-slate-600 truncate mr-4">{file.name}</span>
-                        <button 
-                          onClick={() => removeFile(idx)}
-                          className="text-red-500 hover:text-red-700 p-1 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
+        <div className="bg-white p-6 sm:p-8 rounded-xl border border-slate-200 shadow-sm space-y-6">
+          <div className="border-b border-slate-100 pb-4 mb-6">
+            <h2 className="text-xl font-bold text-slate-800 flex items-center">
+              <span className="bg-slate-900 text-white text-sm w-8 h-8 flex items-center justify-center rounded-lg mr-3">3</span>
+              Evidencias de Respaldo
+            </h2>
+            <p className="text-slate-500 text-sm mt-2 ml-11">Adjunte la documentación fotográfica pertinente (Obligatorio).</p>
           </div>
-        )}
+
+          <div className="bg-slate-50 p-6 sm:p-8 rounded-xl border border-slate-200 border-dashed text-center">
+            <div className="h-16 w-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm border border-slate-100">
+              <Upload className="h-8 w-8 text-slate-400" />
+            </div>
+            <h3 className="font-bold text-slate-800 mb-1">Subir Archivos</h3>
+            <p className="text-sm text-slate-500 mb-6 max-w-sm mx-auto">
+              Formatos aceptados: JPG, PNG. Máximo 5 imágenes.
+            </p>
+
+            <label className="inline-flex justify-center items-center px-6 py-3 bg-slate-900 text-white text-sm font-semibold rounded-lg hover:bg-slate-800 transition-colors cursor-pointer shadow-sm w-full sm:w-auto">
+              <Upload className="h-4 w-4 mr-2" />
+              Examinar Equipo
+              <input 
+                type="file" 
+                className="hidden" 
+                multiple 
+                accept="image/jpeg, image/png"
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || []);
+                  const validFiles = files.filter(f => f.type === 'image/jpeg' || f.type === 'image/png');
+                  
+                  if (validFiles.length !== files.length) {
+                    toast.error('Solo se permiten imágenes JPG y PNG.');
+                  }
+                  
+                  if (evidenceFiles.length + validFiles.length > 5) {
+                    toast.error('Puedes subir un máximo de 5 imágenes.');
+                    return;
+                  }
+                  
+                  setEvidenceFiles(prev => [...prev, ...validFiles]);
+                  e.target.value = ''; // reset
+                }}
+              />
+            </label>
+
+            {evidenceFiles.length > 0 && (
+              <div className="mt-8 text-left max-w-lg mx-auto bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                <h4 className="font-semibold text-slate-700 mb-3 text-xs uppercase tracking-wider flex justify-between">
+                  <span>Archivos adjuntos</span>
+                  <span className="text-slate-400">{evidenceFiles.length}/5 permitidos</span>
+                </h4>
+                <ul className="space-y-2">
+                  {evidenceFiles.map((file, idx) => (
+                    <li key={idx} className="flex justify-between items-center p-3 bg-slate-50 rounded-lg border border-slate-100 group">
+                      <div className="flex items-center overflow-hidden">
+                        <FileText className="h-4 w-4 text-slate-400 mr-3 shrink-0" />
+                        <span className="text-sm font-medium text-slate-700 truncate">{file.name}</span>
+                      </div>
+                      <button 
+                        onClick={() => removeFile(idx)}
+                        className="text-slate-400 hover:text-red-500 p-1.5 hover:bg-red-50 rounded-md transition-colors shrink-0"
+                        title="Eliminar"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </div>
 
       </div>
 
-      {/* Navigation Buttons */}
-      <div className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+      {/* Footer Actions */}
+      <div className="flex flex-col-reverse sm:flex-row justify-between items-center bg-slate-900 p-6 rounded-xl shadow-lg mt-8 gap-4">
         <button
-          onClick={handlePrevStep}
-          disabled={currentStep === 1}
-          className={`flex items-center px-6 py-3 rounded-xl font-bold transition-colors ${currentStep === 1 ? 'text-slate-300 cursor-not-allowed' : 'text-slate-600 bg-slate-100 hover:bg-slate-200'}`}
+          onClick={() => navigate(-1)}
+          className="w-full sm:w-auto flex justify-center items-center px-6 py-3 rounded-lg font-semibold transition-colors text-slate-300 bg-slate-800 hover:bg-slate-700 hover:text-white border border-slate-700"
         >
-          <ChevronLeft className="h-5 w-5 mr-1" />
-          Atrás
+          Cancelar y Volver
         </button>
-
-        {currentStep < 3 ? (
-          <button
-            onClick={handleNextStep}
-            className="flex items-center px-6 py-3 rounded-xl font-bold bg-teal-600 text-white hover:bg-teal-700 transition-colors shadow-md"
-          >
-            Siguiente Paso
-            <ChevronRight className="h-5 w-5 ml-1" />
-          </button>
-        ) : (
-          <button
-            onClick={handleSaveFinal}
-            disabled={saving}
-            className="flex items-center px-6 py-3 rounded-xl font-bold bg-green-600 text-white hover:bg-green-700 transition-colors shadow-md disabled:opacity-70"
-          >
-            {saving ? (
-              <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-            ) : (
-              <Save className="h-5 w-5 mr-2" />
-            )}
-            Guardar y Enviar Plan
-          </button>
-        )}
+        <button
+          onClick={handleSaveFinal}
+          disabled={saving}
+          className="w-full sm:w-auto flex justify-center items-center px-8 py-3 rounded-lg font-bold bg-amber-500 text-slate-900 hover:bg-amber-400 transition-colors shadow-md disabled:opacity-70 disabled:bg-slate-700 disabled:text-slate-400"
+        >
+          {saving ? (
+            <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+          ) : (
+            <Save className="h-5 w-5 mr-2" />
+          )}
+          {saving ? 'Guardando...' : 'Guardar Documento'}
+        </button>
       </div>
 
       {/* --- MODALS --- */}
       {/* Modal Paso 1 */}
-      {currentStep === 1 && activeModalItem !== null && (
+      {activeModalItem !== null && (
         <ModalStep1
           item={items[activeModalItem]}
           onClose={() => setActiveModalItem(null)}
@@ -577,6 +566,7 @@ export default function NuevoPlanMejora() {
         />
       )}
 
+      </div>
     </div>
   );
 }
@@ -596,49 +586,63 @@ function ModalStep1({ item, onClose, onSave }: { item: PlanMejoraItem, onClose: 
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-scale-in">
-        <div className="sticky top-0 bg-white border-b border-slate-100 p-6 flex justify-between items-center z-10">
-          <h3 className="text-xl font-extrabold text-slate-800">Redactar Acción Correctiva</h3>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
-            <X className="h-6 w-6 text-slate-500" />
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-scale-in overflow-hidden border border-slate-200">
+        
+        {/* Modal Header */}
+        <div className="bg-slate-900 px-6 py-4 flex justify-between items-center shrink-0">
+          <h3 className="text-lg font-bold text-white flex items-center">
+            <Edit3 className="w-5 h-5 mr-2 text-amber-500" />
+            Redacción de Acción Correctiva
+          </h3>
+          <button onClick={onClose} className="p-1.5 hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-white">
+            <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="p-6 space-y-6">
-          <div className="bg-red-50 p-4 rounded-xl border border-red-100">
-            <span className="text-xs font-black text-red-600 uppercase tracking-wider block mb-1">Hallazgo</span>
-            <p className="text-red-900 font-medium">"{item.hallazgo.text}"</p>
+        {/* Modal Body */}
+        <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-slate-50">
+          <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-sm">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Descripción del Hallazgo</span>
+            <p className="text-slate-800 font-medium leading-relaxed">"{item.hallazgo.text}"</p>
           </div>
 
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2">Acción Correctiva Propuesta (¿Qué se va a hacer?) <span className="text-red-500">*</span></label>
-            <textarea
-              value={accion}
-              onChange={(e) => setAccion(e.target.value)}
-              rows={4}
-              placeholder="Ej: Se elaborará un nuevo manual de procesos y se capacitará al personal..."
-              className="w-full rounded-xl border-slate-200 shadow-sm focus:border-teal-500 focus:ring-teal-500 bg-slate-50 p-4 text-slate-700 font-medium"
-            />
-          </div>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">Acción Correctiva Propuesta <span className="text-red-500">*</span></label>
+              <textarea
+                value={accion}
+                onChange={(e) => setAccion(e.target.value)}
+                rows={4}
+                placeholder="Describa de forma clara la acción a realizar..."
+                className="w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 text-sm p-3"
+              />
+            </div>
 
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2">Recursos Necesarios (Material / Presupuesto) <span className="text-red-500">*</span></label>
-            <textarea
-              value={recursos}
-              onChange={(e) => setRecursos(e.target.value)}
-              rows={2}
-              placeholder="Ej: Proyector para capacitación, Bs. 500 para refrigerios..."
-              className="w-full rounded-xl border-slate-200 shadow-sm focus:border-teal-500 focus:ring-teal-500 bg-slate-50 p-4 text-slate-700 font-medium"
-            />
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">Recursos Necesarios <span className="text-red-500">*</span></label>
+              <textarea
+                value={recursos}
+                onChange={(e) => setRecursos(e.target.value)}
+                rows={2}
+                placeholder="Especifique los recursos humanos, materiales o financieros..."
+                className="w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 text-sm p-3"
+              />
+            </div>
           </div>
         </div>
 
-        <div className="sticky bottom-0 bg-white border-t border-slate-100 p-6 flex justify-end">
-          <button onClick={handleSave} className="px-6 py-3 bg-teal-600 text-white font-bold rounded-xl hover:bg-teal-700 shadow-md transition-colors">
+        {/* Modal Footer */}
+        <div className="bg-white border-t border-slate-200 px-6 py-4 flex justify-end shrink-0 gap-3">
+          <button onClick={onClose} className="px-5 py-2.5 text-sm font-semibold text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">
+            Cancelar
+          </button>
+          <button onClick={handleSave} className="px-5 py-2.5 text-sm font-semibold bg-slate-900 text-white rounded-lg hover:bg-slate-800 shadow-sm transition-colors flex items-center">
+            <CheckCircle2 className="w-4 h-4 mr-2" />
             Guardar Acción
           </button>
         </div>
+
       </div>
     </div>
   );

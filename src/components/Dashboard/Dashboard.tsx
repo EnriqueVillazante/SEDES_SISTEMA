@@ -673,6 +673,10 @@ export default function Dashboard() {
                             <Link to={`/evaluacion/detalle/${ev.id}`} className="w-full sm:w-auto inline-flex justify-center items-center px-4 py-2 bg-slate-100 text-slate-600 text-sm font-bold rounded-xl hover:bg-slate-200 transition-colors">
                               Ver Calificacion
                             </Link>
+                            <Link to={`/evaluacion/detalle/${ev.id}?tab=radar`} className="w-full sm:w-auto inline-flex justify-center items-center px-4 py-2 bg-teal-50 hover:bg-teal-100 text-teal-700 text-sm font-bold rounded-xl border border-teal-200/80 transition-colors shadow-sm" title="Ver Reporte en Gráfico de Telaraña">
+                              <Activity className="h-4 w-4 mr-1.5 text-teal-600" />
+                              Ver Telaraña
+                            </Link>
                           </>
                         )}
                       </div>

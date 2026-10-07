@@ -152,6 +152,15 @@ export default function AdminEvaluacionDetalle() {
                     <span className="font-bold tracking-wider">{ev.nivel_semaforo}</span>
                   </div>
                 </div>
+                <div className="w-px h-12 bg-slate-700"></div>
+                <button
+                  onClick={() => setShowChartGlobal(true)}
+                  className="flex items-center px-3.5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shadow-md transition-all hover:scale-105 cursor-pointer"
+                  title="Ver Gráfico de Telaraña Global"
+                >
+                  <Activity className="w-4 h-4 mr-1.5 text-blue-200" />
+                  Telaraña Global
+                </button>
               </div>
             )}
           </div>

@@ -1,14 +1,32 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { ArrowLeft, CheckCircle, AlertTriangle, ShieldAlert, LayoutList, ChevronDown, ChevronUp, Award, Star, Activity, TrendingUp, Building2, MapPin } from 'lucide-react';
+import { ArrowLeft, CheckCircle, AlertTriangle, ShieldAlert, LayoutList, ChevronDown, ChevronUp, Award, Star, Activity, TrendingUp, Building2, MapPin, Eye, X } from 'lucide-react';
 import { toast } from 'sonner';
+import GraficoResultados from '../Admin/GraficoResultados';
+import GraficoSeccion2 from '../Admin/GraficoSeccion2';
+import GraficoSeccion3 from '../Admin/GraficoSeccion3';
+import GraficoResultadosGlobal from '../Admin/GraficoResultadosGlobal';
 
 export default function EvaluacionDetalle() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [ev, setEv] = useState<any>(null);
   const [isSection3Open, setIsSection3Open] = useState(false);
+  const [modalTelarana, setModalTelarana] = useState<{
+    isOpen: boolean;
+    tab: 'global' | 'sec1' | 'sec2' | 'residuos' | 'bioseguridad' | 'iaas' | 'cai';
+  }>({
+    isOpen: searchParams.get('tab') === 'radar' || searchParams.get('telarana') === 'true',
+    tab: 'global'
+  });
+
+  useEffect(() => {
+    if (searchParams.get('tab') === 'radar' || searchParams.get('telarana') === 'true') {
+      setModalTelarana(prev => ({ ...prev, isOpen: true }));
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     async function fetchData() {
@@ -198,9 +216,21 @@ export default function EvaluacionDetalle() {
         </div>
 
         {/* DETALLES DE SECCIONES */}
-        <div className="mb-8 flex items-center">
-          <TrendingUp className="h-6 w-6 text-teal-500 mr-3" />
-          <h2 className="text-2xl font-black text-white tracking-tight">Desglose de Calificación</h2>
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center">
+            <TrendingUp className="h-6 w-6 text-teal-500 mr-3" />
+            <h2 className="text-2xl font-black text-white tracking-tight">Desglose de Calificación</h2>
+          </div>
+          {isFinalizado && (
+            <button
+              onClick={() => setModalTelarana({ isOpen: true, tab: 'global' })}
+              className="inline-flex items-center justify-center px-5 py-2.5 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-black text-sm rounded-xl shadow-[0_0_20px_rgba(20,184,166,0.25)] hover:shadow-[0_0_30px_rgba(20,184,166,0.45)] transition-all transform hover:-translate-y-0.5 cursor-pointer"
+              title="Abrir visor completo de reportes de telaraña"
+            >
+              <Activity className="w-4 h-4 mr-2 text-slate-950" />
+              Ver Reportes de Telaraña
+            </button>
+          )}
         </div>
 
         <div className="grid gap-6 relative">
@@ -217,9 +247,19 @@ export default function EvaluacionDetalle() {
                   <h3 className="text-lg sm:text-xl font-bold text-slate-200 tracking-tight">Conformación del CVEH</h3>
                 </div>
               </div>
-              <div className="flex items-center bg-slate-950 px-6 py-3 rounded-xl border border-slate-800 shadow-inner">
-                <span className="text-3xl font-black text-white mr-2">{ev.puntaje_sec_1}</span>
-                <span className="text-slate-500 font-bold">/ 10</span>
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center bg-slate-950 px-6 py-3 rounded-xl border border-slate-800 shadow-inner">
+                  <span className="text-3xl font-black text-white mr-2">{ev.puntaje_sec_1}</span>
+                  <span className="text-slate-500 font-bold">/ 10</span>
+                </div>
+                <button
+                  onClick={() => setModalTelarana({ isOpen: true, tab: 'sec1' })}
+                  className="flex items-center space-x-1.5 px-4 py-3 bg-teal-500/10 hover:bg-teal-500 text-teal-300 hover:text-slate-950 border border-teal-500/30 rounded-xl font-bold text-xs transition-all shadow-sm group hover:scale-105 cursor-pointer"
+                  title="Ver Reporte Gráfico de Telaraña de Sección 1"
+                >
+                  <Eye className="w-4 h-4" />
+                  <span className="hidden sm:inline">Telaraña</span>
+                </button>
               </div>
             </div>
           </div>
@@ -236,9 +276,19 @@ export default function EvaluacionDetalle() {
                   <h3 className="text-lg sm:text-xl font-bold text-slate-200 tracking-tight">Subcomités Operativos</h3>
                 </div>
               </div>
-              <div className="flex items-center bg-slate-950 px-6 py-3 rounded-xl border border-slate-800 shadow-inner">
-                <span className="text-3xl font-black text-white mr-2">{ev.puntaje_sec_2}</span>
-                <span className="text-slate-500 font-bold">/ 16</span>
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center bg-slate-950 px-6 py-3 rounded-xl border border-slate-800 shadow-inner">
+                  <span className="text-3xl font-black text-white mr-2">{ev.puntaje_sec_2}</span>
+                  <span className="text-slate-500 font-bold">/ 16</span>
+                </div>
+                <button
+                  onClick={() => setModalTelarana({ isOpen: true, tab: 'sec2' })}
+                  className="flex items-center space-x-1.5 px-4 py-3 bg-blue-500/10 hover:bg-blue-500 text-blue-300 hover:text-slate-950 border border-blue-500/30 rounded-xl font-bold text-xs transition-all shadow-sm group hover:scale-105 cursor-pointer"
+                  title="Ver Reporte Gráfico de Telaraña de Sección 2"
+                >
+                  <Eye className="w-4 h-4" />
+                  <span className="hidden sm:inline">Telaraña</span>
+                </button>
               </div>
             </div>
           </div>
@@ -277,9 +327,19 @@ export default function EvaluacionDetalle() {
                     <span className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-black text-xs mr-4">1</span>
                     <span className="text-slate-300 font-bold tracking-wide">Residuos Hospitalarios</span>
                   </div>
-                  <div className="flex items-center font-black bg-emerald-500/10 border border-emerald-500/20 px-4 py-1.5 rounded-lg">
-                    <span className="text-emerald-400 text-lg mr-1">{ev.puntaje_sec_3_residuos}</span>
-                    <span className="text-emerald-400/50 text-xs">/ 14</span>
+                  <div className="flex items-center space-x-3">
+                    <div className="flex items-center font-black bg-emerald-500/10 border border-emerald-500/20 px-4 py-1.5 rounded-lg">
+                      <span className="text-emerald-400 text-lg mr-1">{ev.puntaje_sec_3_residuos}</span>
+                      <span className="text-emerald-400/50 text-xs">/ 14</span>
+                    </div>
+                    <button
+                      onClick={() => setModalTelarana({ isOpen: true, tab: 'residuos' })}
+                      className="flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-300 hover:text-slate-950 border border-emerald-500/30 rounded-lg text-xs font-bold transition-all hover:scale-105 cursor-pointer"
+                      title="Ver Telaraña de Residuos Hospitalarios"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Telaraña</span>
+                    </button>
                   </div>
                 </div>
                 
@@ -288,9 +348,19 @@ export default function EvaluacionDetalle() {
                     <span className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center font-black text-xs mr-4">2</span>
                     <span className="text-slate-300 font-bold tracking-wide">Bioseguridad</span>
                   </div>
-                  <div className="flex items-center font-black bg-amber-500/10 border border-amber-500/20 px-4 py-1.5 rounded-lg">
-                    <span className="text-amber-400 text-lg mr-1">{ev.puntaje_sec_3_bioseguridad}</span>
-                    <span className="text-amber-400/50 text-xs">/ 14</span>
+                  <div className="flex items-center space-x-3">
+                    <div className="flex items-center font-black bg-amber-500/10 border border-amber-500/20 px-4 py-1.5 rounded-lg">
+                      <span className="text-amber-400 text-lg mr-1">{ev.puntaje_sec_3_bioseguridad}</span>
+                      <span className="text-amber-400/50 text-xs">/ 14</span>
+                    </div>
+                    <button
+                      onClick={() => setModalTelarana({ isOpen: true, tab: 'bioseguridad' })}
+                      className="flex items-center space-x-1.5 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500 text-amber-300 hover:text-slate-950 border border-amber-500/30 rounded-lg text-xs font-bold transition-all hover:scale-105 cursor-pointer"
+                      title="Ver Telaraña de Bioseguridad"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Telaraña</span>
+                    </button>
                   </div>
                 </div>
                 
@@ -299,9 +369,19 @@ export default function EvaluacionDetalle() {
                     <span className="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-400 flex items-center justify-center font-black text-xs mr-4">3</span>
                     <span className="text-slate-300 font-bold tracking-wide">IAAS y RAM</span>
                   </div>
-                  <div className="flex items-center font-black bg-rose-500/10 border border-rose-500/20 px-4 py-1.5 rounded-lg">
-                    <span className="text-rose-400 text-lg mr-1">{ev.puntaje_sec_3_iaas}</span>
-                    <span className="text-rose-400/50 text-xs">/ 18</span>
+                  <div className="flex items-center space-x-3">
+                    <div className="flex items-center font-black bg-rose-500/10 border border-rose-500/20 px-4 py-1.5 rounded-lg">
+                      <span className="text-rose-400 text-lg mr-1">{ev.puntaje_sec_3_iaas}</span>
+                      <span className="text-rose-400/50 text-xs">/ 18</span>
+                    </div>
+                    <button
+                      onClick={() => setModalTelarana({ isOpen: true, tab: 'iaas' })}
+                      className="flex items-center space-x-1.5 px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500 text-rose-300 hover:text-slate-950 border border-rose-500/30 rounded-lg text-xs font-bold transition-all hover:scale-105 cursor-pointer"
+                      title="Ver Telaraña de IAAS y RAM"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Telaraña</span>
+                    </button>
                   </div>
                 </div>
                 
@@ -310,9 +390,19 @@ export default function EvaluacionDetalle() {
                     <span className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center font-black text-xs mr-4">4</span>
                     <span className="text-slate-300 font-bold tracking-wide">Análisis de Información (CAI)</span>
                   </div>
-                  <div className="flex items-center font-black bg-indigo-500/10 border border-indigo-500/20 px-4 py-1.5 rounded-lg">
-                    <span className="text-indigo-400 text-lg mr-1">{ev.puntaje_sec_3_cai}</span>
-                    <span className="text-indigo-400/50 text-xs">/ 20</span>
+                  <div className="flex items-center space-x-3">
+                    <div className="flex items-center font-black bg-indigo-500/10 border border-indigo-500/20 px-4 py-1.5 rounded-lg">
+                      <span className="text-indigo-400 text-lg mr-1">{ev.puntaje_sec_3_cai}</span>
+                      <span className="text-indigo-400/50 text-xs">/ 20</span>
+                    </div>
+                    <button
+                      onClick={() => setModalTelarana({ isOpen: true, tab: 'cai' })}
+                      className="flex items-center space-x-1.5 px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500 text-indigo-300 hover:text-slate-950 border border-indigo-500/30 rounded-lg text-xs font-bold transition-all hover:scale-105 cursor-pointer"
+                      title="Ver Telaraña de Análisis de Información (CAI)"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Telaraña</span>
+                    </button>
                   </div>
                 </div>
 
@@ -321,6 +411,76 @@ export default function EvaluacionDetalle() {
           </div>
           
         </div>
+
+        {/* MODAL DE REPORTES DE TELARAÑA (RADAR) */}
+        {modalTelarana.isOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-3 sm:p-6 overflow-y-auto">
+            <div className="bg-slate-900 w-full max-w-4xl rounded-3xl shadow-2xl border border-slate-700 overflow-hidden animate-in fade-in zoom-in duration-200 my-auto">
+              
+              {/* Header del Modal */}
+              <div className="flex justify-between items-center p-5 border-b border-slate-800 bg-slate-950/80">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2.5 rounded-xl bg-teal-500/10 border border-teal-500/20 text-teal-400">
+                    <Activity className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-white text-lg tracking-tight">
+                      Reporte de Telaraña (Gráfico Radar)
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      Visualización epidemiológica de desempeño por sección y áreas
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setModalTelarana(prev => ({ ...prev, isOpen: false }))}
+                  className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer"
+                  title="Cerrar modal"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Selector de Pestañas (Tabs) */}
+              <div className="flex items-center gap-2 px-5 py-3 border-b border-slate-800 bg-slate-900/90 overflow-x-auto scrollbar-thin">
+                {[
+                  { id: 'global', label: '🌐 Global' },
+                  { id: 'sec1', label: '📋 Sec. I: CVEH' },
+                  { id: 'sec2', label: '🏢 Sec. II: Subcomités' },
+                  { id: 'residuos', label: '☣️ III: Residuos' },
+                  { id: 'bioseguridad', label: '🛡️ III: Bioseguridad' },
+                  { id: 'iaas', label: '🦠 III: IAAS y RAM' },
+                  { id: 'cai', label: '📈 III: Análisis (CAI)' },
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setModalTelarana(prev => ({ ...prev, tab: tab.id as any }))}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                      modalTelarana.tab === tab.id
+                        ? 'bg-teal-500 text-slate-950 shadow-md shadow-teal-500/20'
+                        : 'bg-slate-800/80 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Contenedor del Gráfico */}
+              <div className="p-4 sm:p-6 bg-slate-950/40">
+                <div className="bg-white rounded-2xl p-2 sm:p-4 shadow-inner">
+                  {modalTelarana.tab === 'global' && <GraficoResultadosGlobal evaluacion={ev} />}
+                  {modalTelarana.tab === 'sec1' && <GraficoResultados evaluacion={ev} />}
+                  {modalTelarana.tab === 'sec2' && <GraficoSeccion2 evaluacion={ev} />}
+                  {['residuos', 'bioseguridad', 'iaas', 'cai'].includes(modalTelarana.tab) && (
+                    <GraficoSeccion3 evaluacion={ev} subcomite={modalTelarana.tab as any} />
+                  )}
+                </div>
+              </div>
+
+            </div>
+          </div>
+        )}
 
       </main>
     </div>

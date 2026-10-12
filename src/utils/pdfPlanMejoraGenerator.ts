@@ -66,7 +66,7 @@ export const generatePlanMejoraPDF = async (
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    const introText = 'Este formato se llena inmediatamente después de aplicar la lista de verificación, registrando únicamente los ítems que obtuvieron un puntaje de cero (0).';
+    const introText = 'Este formato se llena inmediatamente después de aplicar la lista de verificación, registrando los ítems observados que obtuvieron un puntaje menor al óptimo (0 y 1).';
     const splitIntro = doc.splitTextToSize(introText, pageWidth - 30);
     doc.text(splitIntro, 15, 62);
 
@@ -121,13 +121,13 @@ export const generatePlanMejoraPDF = async (
         responsableStr,
         deadlineStr,
         item.recursos_necesarios || '',
-        'Archivos Digitales Adjuntos'
+        'Verificación documental e inspección'
       ];
     });
 
     autoTable(doc, {
       startY: y,
-      head: [['Nº', 'Ítem Reprobado (Hallazgo / No Conformidad)', 'Acción Correctiva Propuesta (¿Qué se va a hacer?)', 'Responsable de la Ejecución (Nombre y Cargo)', 'Fecha Límite de Entrega', 'Recursos Necesarios (Material / Presupuesto)', 'Evidencia de Cumplimiento (¿Cómo se demuestra?)']],
+      head: [['Nº', 'Ítem Observado (Hallazgo / No Conformidad)', 'Acción Correctiva Propuesta (¿Qué se va a hacer?)', 'Responsable de la Ejecución (Nombre y Cargo)', 'Fecha Límite de Entrega', 'Recursos Necesarios (Material / Presupuesto)', 'Evidencia de Cumplimiento (¿Cómo se demuestra?)']],
       body: tableBody,
       headStyles: {
         fillColor: [15, 118, 110], // teal-700

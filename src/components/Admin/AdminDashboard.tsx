@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { LogOut, Activity, ShieldAlert, CheckCircle, AlertTriangle, FileText, Search, Eye, LayoutDashboard, Bell, Send, Image as ImageIcon, MessageSquare, Calendar, ChevronDown, ChevronUp, Clock, Users, Paperclip, ArrowLeft } from 'lucide-react';
+import { LogOut, Activity, ShieldAlert, CheckCircle, AlertTriangle, FileText, Search, Eye, LayoutDashboard, Bell, Send, Image as ImageIcon, MessageSquare, Calendar, ChevronDown, ChevronUp, Clock, Users, ArrowLeft, FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { formatDate } from '../../utils/dateUtils';
+import { exportPlanesMejoraToExcel } from '../../utils/excelPlanMejoraGenerator';
 
 export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
@@ -22,6 +23,30 @@ export default function AdminDashboard() {
   const [planesMejora, setPlanesMejora] = useState<any[]>([]);
   const [selectedPlanForView, setSelectedPlanForView] = useState<any>(null);
   const [expandedItem, setExpandedItem] = useState<any>(null);
+  const [isExportingExcel, setIsExportingExcel] = useState(false);
+
+  // Manejador para exportar todos los planes de mejora a Excel (.xlsx)
+  const handleExportExcel = (planesToExport = planesMejora) => {
+    if (!planesToExport || planesToExport.length === 0) {
+      toast.warning('No existen planes de mejora registrados para exportar');
+      return;
+    }
+    setIsExportingExcel(true);
+    try {
+      const success = exportPlanesMejoraToExcel(planesToExport, evaluaciones);
+      if (success) {
+        toast.success('¡Archivo Excel (.xlsx) generado y descargado exitosamente!');
+      } else {
+        toast.error('Ocurrió un error al generar el archivo Excel');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Error al exportar los datos a Excel');
+    } finally {
+      setIsExportingExcel(false);
+    }
+  };
+
 
   useEffect(() => {
     async function fetchAllData() {
@@ -200,8 +225,8 @@ export default function AdminDashboard() {
           <button
             onClick={() => setActiveTab('evaluaciones')}
             className={`w-full flex items-center px-4 py-3.5 rounded-xl transition-all duration-300 font-bold text-sm group ${activeTab === 'evaluaciones'
-                ? 'bg-amber-500 text-slate-900 shadow-[0_0_20px_rgba(245,158,11,0.2)] scale-[1.02]'
-                : 'text-slate-400 hover:bg-slate-800/50 hover:text-white border border-transparent hover:border-slate-700/50'
+              ? 'bg-amber-500 text-slate-900 shadow-[0_0_20px_rgba(245,158,11,0.2)] scale-[1.02]'
+              : 'text-slate-400 hover:bg-slate-800/50 hover:text-white border border-transparent hover:border-slate-700/50'
               }`}
           >
             <LayoutDashboard className={`h-5 w-5 mr-3 transition-transform ${activeTab === 'evaluaciones' ? 'text-slate-900' : 'text-slate-500 group-hover:scale-110'}`} />
@@ -211,8 +236,8 @@ export default function AdminDashboard() {
           <button
             onClick={() => setActiveTab('notificaciones')}
             className={`w-full flex items-center px-4 py-3.5 rounded-xl transition-all duration-300 font-bold text-sm group ${activeTab === 'notificaciones'
-                ? 'bg-amber-500 text-slate-900 shadow-[0_0_20px_rgba(245,158,11,0.2)] scale-[1.02]'
-                : 'text-slate-400 hover:bg-slate-800/50 hover:text-white border border-transparent hover:border-slate-700/50'
+              ? 'bg-amber-500 text-slate-900 shadow-[0_0_20px_rgba(245,158,11,0.2)] scale-[1.02]'
+              : 'text-slate-400 hover:bg-slate-800/50 hover:text-white border border-transparent hover:border-slate-700/50'
               }`}
           >
             <Bell className={`h-5 w-5 mr-3 transition-transform ${activeTab === 'notificaciones' ? 'text-slate-900' : 'text-slate-500 group-hover:scale-110'}`} />
@@ -222,8 +247,8 @@ export default function AdminDashboard() {
           <button
             onClick={() => setActiveTab('planes')}
             className={`w-full flex items-center px-4 py-3.5 rounded-xl transition-all duration-300 font-bold text-sm group ${activeTab === 'planes'
-                ? 'bg-amber-500 text-slate-900 shadow-[0_0_20px_rgba(245,158,11,0.2)] scale-[1.02]'
-                : 'text-slate-400 hover:bg-slate-800/50 hover:text-white border border-transparent hover:border-slate-700/50'
+              ? 'bg-amber-500 text-slate-900 shadow-[0_0_20px_rgba(245,158,11,0.2)] scale-[1.02]'
+              : 'text-slate-400 hover:bg-slate-800/50 hover:text-white border border-transparent hover:border-slate-700/50'
               }`}
           >
             <ShieldAlert className={`h-5 w-5 mr-3 transition-transform ${activeTab === 'planes' ? 'text-slate-900' : 'text-slate-500 group-hover:scale-110'}`} />
@@ -388,8 +413,8 @@ export default function AdminDashboard() {
                             <td className="px-6 py-4 text-center">
                               {ev.estado === 'FINALIZADO' ? (
                                 <span className={`text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest ${ev.nivel_semaforo === 'ÓPTIMO' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
-                                    ev.nivel_semaforo === 'REGULAR' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
-                                      'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                  ev.nivel_semaforo === 'REGULAR' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
+                                    'bg-rose-500/10 text-rose-400 border border-rose-500/20'
                                   }`}>
                                   {ev.nivel_semaforo}
                                 </span>
@@ -573,15 +598,27 @@ export default function AdminDashboard() {
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
                 <div>
                   <h2 className="text-3xl font-black text-white tracking-tight">Planes de Mejora</h2>
-                  <p className="text-slate-400 mt-1 font-medium">Revisa los planes de acción correctiva enviados por los establecimientos.</p>
+                  <p className="text-slate-400 mt-1 font-medium">Revisa y descarga los planes de acción correctiva de los establecimientos.</p>
                 </div>
-                <Link
-                  to="/plan-mejora/nuevo?preview=true"
-                  className="inline-flex items-center px-5 py-2.5 bg-slate-800/80 backdrop-blur-sm hover:bg-amber-500 hover:text-slate-900 text-amber-500 rounded-xl transition-all duration-300 font-bold text-sm border border-amber-500/20 hover:border-transparent shadow-lg hover:shadow-amber-500/20 group"
-                >
-                  <FileText className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform" />
-                  Ver Formulario de Mejora (Solo Mirar)
-                </Link>
+                <div className="flex items-center flex-wrap gap-3">
+                  <button
+                    onClick={() => handleExportExcel(planesMejora)}
+                    disabled={isExportingExcel || planesMejora.length === 0}
+                    className="inline-flex items-center px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-600 text-white rounded-xl transition-all duration-300 font-bold text-sm shadow-lg shadow-emerald-600/25 hover:shadow-emerald-500/40 group hover:scale-[1.02] active:scale-95 disabled:scale-100 disabled:shadow-none cursor-pointer disabled:cursor-not-allowed"
+                    title="Exportar todos los planes con sus respuestas y días a formato Excel (.xlsx)"
+                  >
+                    <FileSpreadsheet className="h-4 w-4 mr-2 text-white group-hover:scale-110 transition-transform" />
+                    <span>{isExportingExcel ? 'Generando Excel...' : 'Exportar a Excel (.xlsx)'}</span>
+                  </button>
+
+                  <Link
+                    to="/plan-mejora/nuevo?preview=true"
+                    className="inline-flex items-center px-5 py-2.5 bg-slate-800/80 backdrop-blur-sm hover:bg-amber-500 hover:text-slate-900 text-amber-500 rounded-xl transition-all duration-300 font-bold text-sm border border-amber-500/20 hover:border-transparent shadow-lg hover:shadow-amber-500/20 group"
+                  >
+                    <FileText className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform" />
+                    Ver Formulario
+                  </Link>
+                </div>
               </div>
 
               {selectedPlanForView ? (
@@ -611,17 +648,19 @@ export default function AdminDashboard() {
                               <FileText className="h-4 w-4 mr-2" />
                               Resumen del Plan de Acción
                             </h4>
-                            <Link
-                              to={`/admin/evaluacion/${selectedPlanForView.evaluacion_id}`}
-                              className="inline-flex items-center justify-center px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-900 rounded-xl transition-all font-bold text-xs shrink-0 shadow-lg shadow-amber-500/20"
-                              title="Ver Evaluación Original"
-                            >
-                              Ir a Evaluación Original
-                            </Link>
+                            <div className="flex items-center gap-2">
+                              <Link
+                                to={`/admin/evaluacion/${selectedPlanForView.evaluacion_id}`}
+                                className="inline-flex items-center justify-center px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-900 rounded-xl transition-all font-bold text-xs shrink-0 shadow-lg shadow-amber-500/20"
+                                title="Ver Evaluación Original"
+                              >
+                                Ir a Evaluación Original
+                              </Link>
+                            </div>
                           </div>
 
                           {/* Información General del Plan */}
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="bg-slate-900/50 p-5 rounded-2xl border border-slate-700 shadow-inner">
                               <div className="flex items-center space-x-2 mb-3 text-blue-400">
                                 <Clock className="h-5 w-5" />
@@ -649,34 +688,6 @@ export default function AdminDashboard() {
                                   </div>
                                 )}
                               </div>
-                            </div>
-
-                            <div className="bg-slate-900/50 p-5 rounded-2xl border border-slate-700 shadow-inner">
-                              <div className="flex items-center space-x-2 mb-3 text-rose-400">
-                                <Paperclip className="h-5 w-5" />
-                                <h5 className="font-bold text-xs uppercase tracking-widest">Pruebas (Evidencias)</h5>
-                              </div>
-                              {firstItem.evidencia_archivo_ruta ? (
-                                <div className="mt-2 flex gap-3 overflow-x-auto custom-scrollbar pb-2">
-                                  {(() => {
-                                    try {
-                                      const rutas = JSON.parse(firstItem.evidencia_archivo_ruta);
-                                      if (Array.isArray(rutas)) {
-                                        return rutas.map((ruta, i) => (
-                                          <a key={i} href={ruta} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
-                                            <div className="h-20 w-20 rounded-xl bg-slate-800 border-2 border-slate-600 overflow-hidden hover:border-rose-400 transition-colors shadow-md">
-                                              <img src={ruta} alt={`Evidencia ${i + 1}`} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = '/logo.png'; (e.target as HTMLImageElement).className = 'w-full h-full object-contain p-2 opacity-50'; }} />
-                                            </div>
-                                          </a>
-                                        ));
-                                      }
-                                    } catch (e) { }
-                                    return <p className="text-slate-400 text-xs">Sin evidencias válidas</p>;
-                                  })()}
-                                </div>
-                              ) : (
-                                <p className="text-slate-400 text-xs italic">No se adjuntaron evidencias para este plan.</p>
-                              )}
                             </div>
                           </div>
 

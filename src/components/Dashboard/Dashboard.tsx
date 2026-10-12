@@ -143,12 +143,12 @@ export default function Dashboard() {
                   let isUrgent = false;
                   
                   if (diffDays > 0) {
-                    msg = `⚠️ Atención: Quedan ${diffDays} días para presentar las pruebas de cumplimiento del Plan de Mejora (${new Date(ev.fecha_evaluacion).toLocaleDateString('es-ES')}).`;
+                    msg = `⚠️ Atención: Quedan ${diffDays} días para el cumplimiento del Plan de Mejora (${new Date(ev.fecha_evaluacion).toLocaleDateString('es-ES')}).`;
                   } else if (diffDays === 0) {
-                    msg = `🚨 ¡URGENTE! HOY es el último día para presentar las pruebas de cumplimiento de su Plan de Mejora.`;
+                    msg = `🚨 ¡URGENTE! HOY es el último día para el cumplimiento de su Plan de Mejora.`;
                     isUrgent = true;
                   } else {
-                    msg = `❌ Su plazo para presentar las pruebas del Plan de Mejora está vencido hace ${Math.abs(diffDays)} días. Póngase en contacto con el administrador inmediatamente.`;
+                    msg = `❌ Su plazo para el Plan de Mejora está vencido hace ${Math.abs(diffDays)} días. Póngase en contacto con el administrador inmediatamente.`;
                     isUrgent = true;
                   }
 
@@ -249,7 +249,8 @@ export default function Dashboard() {
   };
 
   const latestFinalizedEval = evaluaciones.find(e => e.estado === 'FINALIZADO');
-  const hasPlanMejora = latestFinalizedEval && latestFinalizedEval.planes_mejora && latestFinalizedEval.planes_mejora.length > 0;
+  const hasPlanMejora = Boolean(latestFinalizedEval && latestFinalizedEval.planes_mejora && latestFinalizedEval.planes_mejora.length > 0);
+  const showPlanMejoraAction = Boolean(latestFinalizedEval && !hasPlanMejora);
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans relative overflow-hidden">
@@ -476,25 +477,20 @@ export default function Dashboard() {
             </div>
 
             {/* Quick Actions / Info Card */}
-            <div className="mt-8 bg-white rounded-3xl shadow-lg border border-slate-100 p-6">
-              <h4 className="text-slate-800 font-bold mb-4 flex items-center">
-                <Clock className="h-5 w-5 mr-2 text-teal-500" />
-                Accesos Rápidos
-              </h4>
-              <div className="space-y-3 mt-2">
-                {hasPlanMejora ? (
-                  <button disabled className="w-full flex items-center justify-center p-4 rounded-2xl bg-slate-100 text-slate-500 shadow-sm cursor-not-allowed font-extrabold tracking-wide text-sm border border-slate-200">
-                    <FilePlus className="h-5 w-5 mr-2" />
-                    <span>Plan de Mejora (Ya Enviado)</span>
-                  </button>
-                ) : (
+            {showPlanMejoraAction && (
+              <div className="mt-8 bg-white rounded-3xl shadow-lg border border-slate-100 p-6 animate-fade-in">
+                <h4 className="text-slate-800 font-bold mb-4 flex items-center">
+                  <Clock className="h-5 w-5 mr-2 text-teal-500" />
+                  Accesos Rápidos
+                </h4>
+                <div className="space-y-3 mt-2">
                   <Link to="/plan-mejora/nuevo" className="w-full flex items-center justify-center p-4 rounded-2xl bg-teal-600 hover:bg-teal-700 text-white shadow-md hover:shadow-lg transition-all group font-extrabold tracking-wide text-sm">
                     <FilePlus className="h-5 w-5 mr-2 group-hover:scale-110 transition-transform" />
                     <span>Añadir Plan de Mejora</span>
                   </Link>
-                )}
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Right Column: Institutional Details */}
@@ -670,12 +666,8 @@ export default function Dashboard() {
                               )}
                               Descargar
                             </button>
-                            <Link to={`/evaluacion/detalle/${ev.id}`} className="w-full sm:w-auto inline-flex justify-center items-center px-4 py-2 bg-slate-100 text-slate-600 text-sm font-bold rounded-xl hover:bg-slate-200 transition-colors">
-                              Ver Calificacion
-                            </Link>
-                            <Link to={`/evaluacion/detalle/${ev.id}?tab=radar`} className="w-full sm:w-auto inline-flex justify-center items-center px-4 py-2 bg-teal-50 hover:bg-teal-100 text-teal-700 text-sm font-bold rounded-xl border border-teal-200/80 transition-colors shadow-sm" title="Ver Reporte en Gráfico de Telaraña">
-                              <Activity className="h-4 w-4 mr-1.5 text-teal-600" />
-                              Ver Telaraña
+                            <Link to={`/evaluacion/detalle/${ev.id}`} className="w-full sm:w-auto inline-flex justify-center items-center px-4 py-2 bg-slate-100 text-slate-700 hover:text-slate-900 text-sm font-bold rounded-xl hover:bg-slate-200 transition-colors shadow-xs">
+                              Ver Calificación
                             </Link>
                           </>
                         )}
@@ -705,7 +697,7 @@ export default function Dashboard() {
                             })()}
                           </div>
                           <h4 className="font-bold text-slate-700">
-                            Acciones Correctivas y Evidencias
+                            Acciones Correctivas y Compromisos
                           </h4>
                         </div>
 

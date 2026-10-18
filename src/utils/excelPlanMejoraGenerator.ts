@@ -83,7 +83,7 @@ export function flattenPlanesData(
 
     planGroup.items.forEach(item => {
       const dias = item.plazo_dias ? Number(item.plazo_dias) : 0;
-      
+
       let fechaLimite = 'No calculada';
       if (fechaEvalStr && dias > 0) {
         try {
@@ -91,7 +91,7 @@ export function flattenPlanesData(
           f.setDate(f.getDate() + dias);
           fechaLimite = formatDate(f.toISOString(), { day: '2-digit', month: '2-digit', year: 'numeric' });
         } catch {
-          fechaLimite = `${dias} días`;
+          fechaLimite = `${dias} días laborales`;
         }
       }
 

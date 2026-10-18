@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { getQuestionById, type EvaluationQuestion } from '../../utils/evaluationDictionary';
-import { Loader2, AlertCircle, FileText, CheckCircle2, Save, Edit3, UserPlus, X } from 'lucide-react';
+import { Loader2, AlertCircle, FileText, CheckCircle2, Save, Edit3, UserPlus, X, Clock, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -16,9 +16,13 @@ interface Evaluacion {
 export interface PlanMejoraItem {
   hallazgo: EvaluationQuestion;
   puntaje?: number;
-  // Step 1
   accion_correctiva?: string;
   recursos_necesarios?: string;
+  plazo_dias?: number;
+  responsable_1_nombre?: string;
+  responsable_1_cargo?: string;
+  responsable_2_nombre?: string;
+  responsable_2_cargo?: string;
   // Evidencia opcional para compatibilidad
   evidencia_archivo_ruta?: string;
 }
@@ -32,11 +36,6 @@ export default function NuevoPlanMejora() {
   const [usuarioId, setUsuarioId] = useState<string | null>(null);
   const [items, setItems] = useState<PlanMejoraItem[]>([]);
   const [evalMetaData, setEvalMetaData] = useState({ establecimiento_salud: '', fecha_evaluacion: '', nivel_semaforo: '' });
-
-  // Global Step 2 State
-  const [globalResp1, setGlobalResp1] = useState('');
-  const [globalResp2, setGlobalResp2] = useState('');
-  const [globalPlazo, setGlobalPlazo] = useState<number | ''>('');
 
   // Modal State
   const [activeModalItem, setActiveModalItem] = useState<number | null>(null);
@@ -138,15 +137,19 @@ export default function NuevoPlanMejora() {
   };
 
   const validateForm = () => {
-    const isStep1Valid = items.every(item => item.accion_correctiva && item.accion_correctiva.trim() !== '' && item.recursos_necesarios && item.recursos_necesarios.trim() !== '');
-    if (!isStep1Valid) {
-      toast.error('Debe completar la acción correctiva y recursos para TODOS los hallazgos.');
-      return false;
-    }
-    
-    const isStep2Valid = globalResp1.trim() !== '' && globalPlazo !== '' && Number(globalPlazo) > 0;
-    if (!isStep2Valid) {
-      toast.error('Debe asignar al Director Técnico y el plazo general en días.');
+    const isAllValid = items.every(
+      item =>
+        item.accion_correctiva &&
+        item.accion_correctiva.trim() !== '' &&
+        item.recursos_necesarios &&
+        item.recursos_necesarios.trim() !== '' &&
+        item.plazo_dias &&
+        Number(item.plazo_dias) > 0 &&
+        item.responsable_1_nombre &&
+        item.responsable_1_nombre.trim() !== ''
+    );
+    if (!isAllValid) {
+      toast.error('Debe completar la acción correctiva, recursos, plazo en días y el responsable para TODOS los hallazgos.');
       return false;
     }
     
@@ -158,17 +161,17 @@ export default function NuevoPlanMejora() {
     try {
       setSaving(true);
 
-      // Guardar en base de datos
+      // Guardar en base de datos cada observación con su propio plazo y responsables
       const rowsToInsert = items.map(item => ({
         usuario_id: usuarioId,
         evaluacion_id: evaluacionId,
         item_reprobado: `${item.hallazgo.sectionTitle} - ${item.hallazgo.title || item.hallazgo.text}`,
         accion_correctiva: item.accion_correctiva,
-        responsable_1_nombre: globalResp1,
-        responsable_1_cargo: 'Director Técnico del Establecimiento',
-        responsable_2_nombre: globalResp2 || null,
-        responsable_2_cargo: globalResp2 ? 'Responsable de Vigilancia Epidemiológica' : null,
-        plazo_dias: Number(globalPlazo),
+        responsable_1_nombre: item.responsable_1_nombre?.trim(),
+        responsable_1_cargo: item.responsable_1_cargo?.trim() || 'Director Técnico del Establecimiento',
+        responsable_2_nombre: item.responsable_2_nombre?.trim() || null,
+        responsable_2_cargo: item.responsable_2_nombre?.trim() ? (item.responsable_2_cargo?.trim() || 'Responsable de Vigilancia Epidemiológica') : null,
+        plazo_dias: Number(item.plazo_dias),
         recursos_necesarios: item.recursos_necesarios,
         estado: 'PENDIENTE',
         evidencia_archivo_ruta: null
@@ -254,18 +257,30 @@ export default function NuevoPlanMejora() {
       <div className="space-y-8 min-h-[400px]">
 
         {/* STEP 1: Hallazgos e Identificación */}
-        <div className="bg-white p-6 sm:p-8 rounded-b-2xl sm:rounded-xl border border-slate-200 shadow-sm space-y-6">
+        {/* Identificación de Hallazgos y Acciones */}
+        <div className="bg-white p-6 sm:p-8 rounded-xl border border-slate-200 shadow-sm space-y-6">
           <div className="border-b border-slate-100 pb-4 mb-6">
             <h2 className="text-xl font-bold text-slate-800 flex items-center">
-              <span className="bg-slate-900 text-white text-sm w-8 h-8 flex items-center justify-center rounded-lg mr-3">1</span>
-              Identificación de Hallazgos y Acciones
+              <span className="bg-slate-900 text-white text-sm w-8 h-8 flex items-center justify-center rounded-lg mr-3">
+                <FileText className="w-4 h-4 text-amber-400" />
+              </span>
+              Identificación de Hallazgos, Plazos y Responsables
             </h2>
-            <p className="text-slate-500 text-sm mt-2 ml-11">Declare la acción correctiva propuesta y los recursos necesarios para cada hallazgo.</p>
+            <p className="text-slate-500 text-sm mt-2 ml-11">
+              Haga clic en cada hallazgo para redactar la acción correctiva, recursos necesarios, plazo en días y el responsable asignado.
+            </p>
           </div>
 
           <div className="grid gap-4">
             {items.map((item, idx) => {
-              const isCompleted = item.accion_correctiva && item.recursos_necesarios;
+              const isCompleted = Boolean(
+                item.accion_correctiva &&
+                item.recursos_necesarios &&
+                item.plazo_dias &&
+                Number(item.plazo_dias) > 0 &&
+                item.responsable_1_nombre &&
+                item.responsable_1_nombre.trim() !== ''
+              );
               return (
                 <button
                   key={idx}
@@ -294,10 +309,23 @@ export default function NuevoPlanMejora() {
                       {item.hallazgo.title || item.hallazgo.text}
                     </h3>
                     {isCompleted && (
-                      <div className="mt-3 bg-white p-3 rounded-lg border border-slate-200">
-                        <p className="text-sm text-slate-600 line-clamp-2">
-                          <span className="font-semibold text-slate-800">Acción:</span> {item.accion_correctiva}
+                      <div className="mt-3 bg-white p-3.5 rounded-lg border border-slate-200 space-y-2">
+                        <p className="text-sm text-slate-700 line-clamp-2">
+                          <span className="font-semibold text-slate-900">Acción:</span> {item.accion_correctiva}
                         </p>
+                        <div className="flex flex-wrap items-center gap-2 pt-1">
+                          <span className="inline-flex items-center text-xs font-bold bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full border border-blue-200 shrink-0">
+                            <Clock className="w-3.5 h-3.5 mr-1 text-blue-600" /> Plazo: {item.plazo_dias} {item.plazo_dias === 1 ? 'día laboral' : 'días laborales'}
+                          </span>
+                          <span className="inline-flex items-center text-xs font-bold bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full border border-emerald-200 shrink-0">
+                            <Users className="w-3.5 h-3.5 mr-1 text-emerald-600" /> Resp: {item.responsable_1_nombre}
+                          </span>
+                        </div>
+                        {item.recursos_necesarios && (
+                          <p className="text-xs text-slate-500 line-clamp-1">
+                            <span className="font-semibold text-slate-700">Recursos:</span> {item.recursos_necesarios}
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>
@@ -315,74 +343,6 @@ export default function NuevoPlanMejora() {
                 </button>
               );
             })}
-          </div>
-        </div>
-
-        {/* STEP 2: Responsables y Tiempos */}
-        <div className="bg-white p-6 sm:p-8 rounded-xl border border-slate-200 shadow-sm space-y-6">
-          <div className="border-b border-slate-100 pb-4 mb-6">
-            <h2 className="text-xl font-bold text-slate-800 flex items-center">
-              <span className="bg-slate-900 text-white text-sm w-8 h-8 flex items-center justify-center rounded-lg mr-3">2</span>
-              Responsables y Plazos de Ejecución
-            </h2>
-            <p className="text-slate-500 text-sm mt-2 ml-11">Asigne a los profesionales a cargo y el plazo estimado para el cumplimiento global.</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Responsable 1 */}
-            <div className="space-y-2">
-              <label className="block text-sm font-bold text-slate-700">Responsable 1 <span className="text-red-500">*</span></label>
-              <p className="text-xs text-slate-500 mb-2">Director Técnico del Establecimiento</p>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <UserPlus className="h-5 w-5 text-slate-400" />
-                </div>
-                <input
-                  type="text"
-                  value={globalResp1}
-                  onChange={(e) => setGlobalResp1(e.target.value)}
-                  placeholder="Nombre completo"
-                  className="pl-10 w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 text-sm py-2.5"
-                />
-              </div>
-            </div>
-
-            {/* Responsable 2 */}
-            <div className="space-y-2">
-              <label className="block text-sm font-bold text-slate-700">Responsable 2 <span className="text-slate-400 font-normal">(Opcional)</span></label>
-              <p className="text-xs text-slate-500 mb-2">Responsable de Vigilancia Epidemiológica</p>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <UserPlus className="h-5 w-5 text-slate-400" />
-                </div>
-                <input
-                  type="text"
-                  value={globalResp2}
-                  onChange={(e) => setGlobalResp2(e.target.value)}
-                  placeholder="Nombre completo"
-                  className="pl-10 w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 text-sm py-2.5"
-                />
-              </div>
-            </div>
-
-            {/* Plazo */}
-            <div className="md:col-span-2 bg-slate-50 p-5 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-2">
-              <div>
-                <h3 className="font-bold text-slate-800">Plazo para la corrección <span className="text-red-500">*</span></h3>
-                <p className="text-sm text-slate-500">Tiempo estimado en días calendario para solventar los hallazgos</p>
-              </div>
-              <div className="flex items-center bg-white p-1 rounded-lg border border-slate-300 shadow-sm w-full sm:w-auto">
-                <input
-                  type="number"
-                  min="1"
-                  value={globalPlazo}
-                  onChange={(e) => setGlobalPlazo(e.target.value ? Number(e.target.value) : '')}
-                  placeholder="0"
-                  className="w-full sm:w-20 border-0 focus:ring-0 text-center text-lg font-bold text-slate-800 py-2"
-                />
-                <span className="pr-4 pl-2 font-medium text-slate-500 uppercase text-xs tracking-wider border-l border-slate-100">días</span>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -435,13 +395,26 @@ export default function NuevoPlanMejora() {
 function ModalStep1({ item, onClose, onSave }: { item: PlanMejoraItem, onClose: () => void, onSave: (d: any) => void }) {
   const [accion, setAccion] = useState(item.accion_correctiva || '');
   const [recursos, setRecursos] = useState(item.recursos_necesarios || '');
+  const [plazo, setPlazo] = useState<number | ''>(item.plazo_dias || '');
+  const [resp1Nombre, setResp1Nombre] = useState(item.responsable_1_nombre || '');
+  const [resp1Cargo, setResp1Cargo] = useState(item.responsable_1_cargo || 'Director Técnico del Establecimiento');
+  const [resp2Nombre, setResp2Nombre] = useState(item.responsable_2_nombre || '');
+  const [resp2Cargo, setResp2Cargo] = useState(item.responsable_2_cargo || 'Responsable de Vigilancia Epidemiológica');
 
   const handleSave = () => {
-    if (!accion.trim() || !recursos.trim()) {
-      toast.error("Todos los campos son obligatorios.");
+    if (!accion.trim() || !recursos.trim() || !plazo || Number(plazo) <= 0 || !resp1Nombre.trim()) {
+      toast.error("Debe ingresar la acción correctiva, recursos, plazo en días (>0) y el nombre del Responsable Principal.");
       return;
     }
-    onSave({ accion_correctiva: accion, recursos_necesarios: recursos });
+    onSave({
+      accion_correctiva: accion,
+      recursos_necesarios: recursos,
+      plazo_dias: Number(plazo),
+      responsable_1_nombre: resp1Nombre.trim(),
+      responsable_1_cargo: resp1Cargo.trim() || 'Director Técnico del Establecimiento',
+      responsable_2_nombre: resp2Nombre.trim() || undefined,
+      responsable_2_cargo: resp2Nombre.trim() ? (resp2Cargo.trim() || 'Responsable de Vigilancia Epidemiológica') : undefined,
+    });
   };
 
   return (
@@ -481,7 +454,7 @@ function ModalStep1({ item, onClose, onSave }: { item: PlanMejoraItem, onClose: 
               <textarea
                 value={accion}
                 onChange={(e) => setAccion(e.target.value)}
-                rows={4}
+                rows={3}
                 placeholder="Describa de forma clara la acción a realizar..."
                 className="w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 text-sm p-3"
               />
@@ -496,6 +469,102 @@ function ModalStep1({ item, onClose, onSave }: { item: PlanMejoraItem, onClose: 
                 placeholder="Especifique los recursos humanos, materiales o financieros..."
                 className="w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 text-sm p-3"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">
+                Plazo para la corrección (días laborales) <span className="text-red-500">*</span>
+              </label>
+              <div className="flex items-center max-w-xs bg-white rounded-lg border border-slate-300 shadow-sm focus-within:border-slate-500 focus-within:ring-1 focus-within:ring-slate-500 overflow-hidden">
+                <div className="pl-3 pr-1 text-slate-400">
+                  <Clock className="h-4 w-4" />
+                </div>
+                <input
+                  type="number"
+                  min="1"
+                  value={plazo}
+                  onChange={(e) => setPlazo(e.target.value ? Number(e.target.value) : '')}
+                  placeholder="Ej. 15"
+                  className="w-full border-0 focus:ring-0 text-sm font-semibold text-slate-800 py-2.5 px-2"
+                />
+                <span className="pr-3 pl-2 font-medium text-slate-500 uppercase text-xs tracking-wider border-l border-slate-200 bg-slate-50 py-2.5">
+                  días lab.
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">Tiempo estimado para resolver este hallazgo específico.</p>
+            </div>
+
+            {/* Responsables específicos para este hallazgo */}
+            <div className="pt-4 border-t border-slate-200 space-y-4">
+              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center">
+                <Users className="w-4 h-4 mr-2 text-slate-600" /> Responsables Asignados a este Hallazgo
+              </h4>
+
+              {/* Responsable 1 */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white p-3.5 rounded-xl border border-slate-200">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Responsable Principal <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                      <UserPlus className="h-4 w-4" />
+                    </div>
+                    <input
+                      type="text"
+                      value={resp1Nombre}
+                      onChange={(e) => setResp1Nombre(e.target.value)}
+                      placeholder="Nombre completo"
+                      className="pl-9 w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 text-xs py-2 px-3"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Cargo Responsable Principal
+                  </label>
+                  <input
+                    type="text"
+                    value={resp1Cargo}
+                    onChange={(e) => setResp1Cargo(e.target.value)}
+                    placeholder="Ej. Director Técnico"
+                    className="w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 text-xs py-2 px-3"
+                  />
+                </div>
+              </div>
+
+              {/* Responsable 2 (Opcional) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white p-3.5 rounded-xl border border-slate-200">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Co-responsable <span className="text-slate-400 font-normal">(Opcional)</span>
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                      <UserPlus className="h-4 w-4" />
+                    </div>
+                    <input
+                      type="text"
+                      value={resp2Nombre}
+                      onChange={(e) => setResp2Nombre(e.target.value)}
+                      placeholder="Nombre completo"
+                      className="pl-9 w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 text-xs py-2 px-3"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Cargo Co-responsable <span className="text-slate-400 font-normal">(Opcional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={resp2Cargo}
+                    onChange={(e) => setResp2Cargo(e.target.value)}
+                    placeholder="Ej. Responsable de Vigilancia"
+                    className="w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 text-xs py-2 px-3"
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>

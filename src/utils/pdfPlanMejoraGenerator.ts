@@ -6,6 +6,11 @@ export interface MappedPlanItem {
   hallazgo_str: string;
   accion_correctiva: string;
   recursos_necesarios: string;
+  plazo_dias?: number;
+  responsable_1_nombre?: string;
+  responsable_1_cargo?: string;
+  responsable_2_nombre?: string;
+  responsable_2_cargo?: string;
 }
 
 export const generatePlanMejoraPDF = async (
@@ -15,9 +20,9 @@ export const generatePlanMejoraPDF = async (
     nivel_semaforo: string;
   },
   items: MappedPlanItem[],
-  globalResp1: string,
-  globalResp2: string,
-  globalPlazo: number
+  globalResp1?: string,
+  globalResp2?: string,
+  globalPlazo?: number
 ) => {
   try {
     toast.loading('Generando Plan de Mejora en PDF...', { id: 'pdf-plan-toast' });
@@ -100,25 +105,36 @@ export const generatePlanMejoraPDF = async (
     y += 12;
 
     // 3. Tabla Principal
-    const getDeadlineDate = (days: number) => {
-      const d = new Date();
+    const getDeadlineDate = (days: number, baseDate?: string) => {
+      const d = baseDate ? new Date(baseDate) : new Date();
       d.setDate(d.getDate() + days);
       return formatDate(d.toISOString());
     };
 
-    const deadlineStr = getDeadlineDate(globalPlazo);
-
-    let responsableStr = `Dir. Tec.: ${globalResp1}`;
-    if (globalResp2) {
-      responsableStr += `\nVigilancia: ${globalResp2}`;
-    }
-
     const tableBody = items.map((item, index) => {
+      const dias = item.plazo_dias ?? globalPlazo ?? 0;
+      const deadlineStr = dias > 0
+        ? `${getDeadlineDate(dias, evalMetaData.fecha_evaluacion)}\n(${dias} días laborales)`
+        : 'No definido';
+
+      let filaResp = '';
+      if (item.responsable_1_nombre) {
+        filaResp = `${item.responsable_1_nombre} (${item.responsable_1_cargo || 'Dir. Técnico'})`;
+        if (item.responsable_2_nombre) {
+          filaResp += `\n${item.responsable_2_nombre} (${item.responsable_2_cargo || 'Vig. Epidem.'})`;
+        }
+      } else if (globalResp1) {
+        filaResp = `Dir. Tec.: ${globalResp1}`;
+        if (globalResp2) filaResp += `\nVigilancia: ${globalResp2}`;
+      } else {
+        filaResp = 'No asignado';
+      }
+
       return [
         (index + 1).toString(),
         item.hallazgo_str,
         item.accion_correctiva || '',
-        responsableStr,
+        filaResp,
         deadlineStr,
         item.recursos_necesarios || '',
         'Verificación documental e inspección'
@@ -178,9 +194,10 @@ export const generatePlanMejoraPDF = async (
     doc.setLineWidth(0.5);
     doc.line(20, firmasY, 90, firmasY);
 
-    if (globalResp2) {
+    const resp2 = globalResp2 || items.find(i => i.responsable_2_nombre)?.responsable_2_nombre || '';
+    if (resp2) {
       doc.setFont('helvetica', 'bold');
-      doc.text(globalResp2.toUpperCase(), 55, firmasY + 5, { align: 'center' });
+      doc.text(resp2.toUpperCase(), 55, firmasY + 5, { align: 'center' });
     }
     doc.setFont('helvetica', 'normal');
     doc.text('Responsable de Vigilancia Epidemiológica', 55, firmasY + 10, { align: 'center' });
@@ -191,9 +208,10 @@ export const generatePlanMejoraPDF = async (
     doc.line(180, firmasY, 250, firmasY);
     doc.setFont('helvetica', 'normal');
 
-    if (globalResp1) {
+    const resp1 = globalResp1 || items.find(i => i.responsable_1_nombre)?.responsable_1_nombre || '';
+    if (resp1) {
       doc.setFont('helvetica', 'bold');
-      doc.text(globalResp1.toUpperCase(), 215, firmasY + 5, { align: 'center' });
+      doc.text(resp1.toUpperCase(), 215, firmasY + 5, { align: 'center' });
     }
     doc.setFont('helvetica', 'normal');
     doc.text('Director Técnico del Establecimiento', 215, firmasY + 10, { align: 'center' });

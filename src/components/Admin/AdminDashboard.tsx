@@ -1,10 +1,16 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { LogOut, Activity, ShieldAlert, CheckCircle, AlertTriangle, FileText, Search, Eye, LayoutDashboard, Bell, Send, Image as ImageIcon, MessageSquare, Calendar, ChevronDown, ChevronUp, Clock, Users, ArrowLeft, FileSpreadsheet } from 'lucide-react';
+import { 
+  LogOut, Activity, ShieldAlert, CheckCircle, AlertTriangle, FileText, Search, 
+  Eye, LayoutDashboard, Bell, Send, Image as ImageIcon, MessageSquare, Calendar, 
+  ChevronDown, ChevronUp, Clock, Users, ArrowLeft, FileSpreadsheet, Newspaper, 
+  Trash2, ExternalLink, Download, X, PlusCircle, RefreshCw 
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { formatDate } from '../../utils/dateUtils';
 import { exportPlanesMejoraToExcel } from '../../utils/excelPlanMejoraGenerator';
+import { formatPdfPreviewUrl, formatPdfDownloadUrl, type BoletinEpidemiologico } from '../Dashboard/Dashboard';
 
 export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
@@ -12,7 +18,7 @@ export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
 
   // Navigation State
-  const [activeTab, setActiveTab] = useState<'evaluaciones' | 'notificaciones' | 'planes'>('evaluaciones');
+  const [activeTab, setActiveTab] = useState<'evaluaciones' | 'notificaciones' | 'planes' | 'boletines'>('evaluaciones');
 
   // States
   const [notifTitulo, setNotifTitulo] = useState('');
@@ -24,6 +30,20 @@ export default function AdminDashboard() {
   const [selectedPlanForView, setSelectedPlanForView] = useState<any>(null);
   const [expandedItem, setExpandedItem] = useState<any>(null);
   const [isExportingExcel, setIsExportingExcel] = useState(false);
+
+  // Estados de Boletines Epidemiológicos (Administrador)
+  const [boletines, setBoletines] = useState<BoletinEpidemiologico[]>([]);
+  const [loadingBoletines, setLoadingBoletines] = useState(false);
+  const [bolTitulo, setBolTitulo] = useState('');
+  const [bolEdicion, setBolEdicion] = useState('');
+  const [bolDescripcion, setBolDescripcion] = useState('');
+  const [bolUrl, setBolUrl] = useState('');
+  const [bolFecha, setBolFecha] = useState(new Date().toISOString().split('T')[0]);
+  const [bolAutor, setBolAutor] = useState('Dirección de Epidemiología SEDES');
+  const [bolArchivoNombre, setBolArchivoNombre] = useState('');
+  const [isPublishingBoletin, setIsPublishingBoletin] = useState(false);
+  const [previewAdminBoletin, setPreviewAdminBoletin] = useState<BoletinEpidemiologico | null>(null);
+  const [adminPreviewPdfUrl, setAdminPreviewPdfUrl] = useState<string | null>(null);
 
   // Manejador para exportar todos los planes de mejora a Excel (.xlsx)
   const handleExportExcel = (planesToExport = planesMejora) => {
@@ -99,6 +119,9 @@ export default function AdminDashboard() {
 
           setPlanesMejora(Object.values(grouped));
         }
+
+        // Fetch Boletines Epidemiológicos desde Supabase
+        await fetchBoletinesAdmin();
       } catch (err: any) {
         toast.error('Error al cargar datos administrativos');
         console.error(err);
@@ -107,7 +130,126 @@ export default function AdminDashboard() {
       }
     }
     fetchAllData();
+
+    // Sincronización en tiempo real de boletines para el Administrador
+    const channel = supabase
+      .channel('admin_boletines_realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'boletines_epidemiologicos' },
+        () => {
+          fetchBoletinesAdmin();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
+
+  const fetchBoletinesAdmin = async () => {
+    setLoadingBoletines(true);
+    try {
+      const { data, error } = await supabase
+        .from('boletines_epidemiologicos')
+        .select('*')
+        .order('fecha_publicacion', { ascending: false });
+
+      if (error) {
+        console.error('Error al cargar boletines de Supabase:', error);
+      } else if (data) {
+        setBoletines(data);
+        localStorage.setItem('sedes_boletines_epidemiologicos', JSON.stringify(data));
+      }
+    } catch (err) {
+      console.error('Error en fetchBoletinesAdmin:', err);
+    } finally {
+      setLoadingBoletines(false);
+    }
+  };
+
+  const handlePublishBoletin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bolTitulo.trim()) {
+      toast.error('Ingresa el título del boletín epidemiológico');
+      return;
+    }
+    if (!bolEdicion.trim()) {
+      toast.error('Ingresa la edición o semana epidemiológica');
+      return;
+    }
+    if (!bolUrl.trim()) {
+      toast.error('Ingresa el enlace de Google Drive o URL del PDF');
+      return;
+    }
+
+    setIsPublishingBoletin(true);
+    try {
+      // Insertar directamente en la tabla de Supabase
+      const { error } = await supabase
+        .from('boletines_epidemiologicos')
+        .insert([{
+          titulo: bolTitulo.trim(),
+          edicion: bolEdicion.trim(),
+          descripcion: bolDescripcion.trim() || 'Reporte oficial de vigilancia epidemiológica para los centros de salud.',
+          fecha_publicacion: bolFecha || new Date().toISOString().split('T')[0],
+          archivo_url: bolUrl.trim(),
+          archivo_nombre: bolArchivoNombre.trim() || `${bolTitulo.replace(/\s+/g, '_').toLowerCase()}.pdf`,
+          tamanio_kb: 850,
+          autor: bolAutor.trim() || 'Dirección de Epidemiología SEDES',
+          es_oficial: true
+        }]);
+
+      if (error) {
+        console.error('Error en Supabase al insertar boletín:', error);
+        toast.error(`Error al guardar en la base de datos: ${error.message}`);
+        return;
+      }
+
+      toast.success('¡Boletín epidemiológico publicado exitosamente en la base de datos!');
+      setBolTitulo('');
+      setBolEdicion('');
+      setBolDescripcion('');
+      setBolUrl('');
+      setBolArchivoNombre('');
+      setBolFecha(new Date().toISOString().split('T')[0]);
+
+      // Actualizar listado directamente desde Supabase
+      await fetchBoletinesAdmin();
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Ocurrió un error inesperado al publicar el boletín');
+    } finally {
+      setIsPublishingBoletin(false);
+    }
+  };
+
+  const handleDeleteBoletin = async (id: string) => {
+    if (!window.confirm('¿Estás seguro de eliminar este boletín epidemiológico de la base de datos? Esta acción es definitiva.')) return;
+
+    try {
+      const { error } = await supabase
+        .from('boletines_epidemiologicos')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        toast.error(`Error al eliminar de la base de datos: ${error.message}`);
+        return;
+      }
+
+      toast.success('Boletín eliminado correctamente');
+      await fetchBoletinesAdmin();
+    } catch (e: any) {
+      toast.error('Error de conexión al eliminar el boletín');
+    }
+  };
+
+  const handleOpenPreviewBoletin = (bol: BoletinEpidemiologico) => {
+    setPreviewAdminBoletin(bol);
+    setAdminPreviewPdfUrl(formatPdfPreviewUrl(bol.archivo_url));
+  };
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
@@ -184,14 +326,23 @@ export default function AdminDashboard() {
           <button
             onClick={() => setActiveTab('notificaciones')}
             className={`p-2.5 rounded-xl transition-colors ${activeTab === 'notificaciones' ? 'bg-amber-500 text-slate-900' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
+            title="Notificaciones"
           >
             <Bell className="h-5 w-5" />
           </button>
           <button
             onClick={() => setActiveTab('planes')}
             className={`p-2.5 rounded-xl transition-colors ${activeTab === 'planes' ? 'bg-amber-500 text-slate-900' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
+            title="Planes de Mejora"
           >
             <ShieldAlert className="h-5 w-5" />
+          </button>
+          <button
+            onClick={() => setActiveTab('boletines')}
+            className={`p-2.5 rounded-xl transition-colors ${activeTab === 'boletines' ? 'bg-amber-500 text-slate-900' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
+            title="Boletines Epidemiológicos"
+          >
+            <Newspaper className="h-5 w-5" />
           </button>
           <button
             onClick={handleSignOut}
@@ -254,6 +405,17 @@ export default function AdminDashboard() {
             <ShieldAlert className={`h-5 w-5 mr-3 transition-transform ${activeTab === 'planes' ? 'text-slate-900' : 'text-slate-500 group-hover:scale-110'}`} />
             Planes de Mejora
           </button>
+
+          <button
+            onClick={() => setActiveTab('boletines')}
+            className={`w-full flex items-center px-4 py-3.5 rounded-xl transition-all duration-300 font-bold text-sm group ${activeTab === 'boletines'
+              ? 'bg-amber-500 text-slate-900 shadow-[0_0_20px_rgba(245,158,11,0.2)] scale-[1.02]'
+              : 'text-slate-400 hover:bg-slate-800/50 hover:text-white border border-transparent hover:border-slate-700/50'
+              }`}
+          >
+            <Newspaper className={`h-5 w-5 mr-3 transition-transform ${activeTab === 'boletines' ? 'text-slate-900' : 'text-slate-500 group-hover:scale-110'}`} />
+            Boletines Epidemiológicos
+          </button>
         </nav>
 
         <div className="p-5 border-t border-slate-800/50">
@@ -284,13 +446,23 @@ export default function AdminDashboard() {
                   <h2 className="text-3xl font-black text-white tracking-tight">Panel de Evaluaciones</h2>
                   <p className="text-slate-400 mt-1 font-medium">Monitorea el cumplimiento epidemiológico de los establecimientos.</p>
                 </div>
-                <Link
-                  to="/evaluacion/nueva"
-                  className="inline-flex items-center px-5 py-2.5 bg-slate-800/80 backdrop-blur-sm hover:bg-amber-500 hover:text-slate-900 text-amber-500 rounded-xl transition-all duration-300 font-bold text-sm border border-amber-500/20 hover:border-transparent shadow-lg hover:shadow-amber-500/20 group"
-                >
-                  <FileText className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform" />
-                  Ver Formulario Base
-                </Link>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <button
+                    onClick={() => setActiveTab('boletines')}
+                    className="inline-flex items-center px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl transition-all duration-300 font-bold text-sm shadow-lg shadow-amber-500/20 group hover:scale-105"
+                  >
+                    <PlusCircle className="h-4 w-4 mr-2 group-hover:rotate-90 transition-transform" />
+                    + Añadir Boletín
+                  </button>
+
+                  <Link
+                    to="/evaluacion/nueva"
+                    className="inline-flex items-center px-5 py-2.5 bg-slate-800/80 backdrop-blur-sm hover:bg-slate-700 hover:text-white text-slate-300 rounded-xl transition-all duration-300 font-bold text-sm border border-slate-700 shadow-lg group"
+                  >
+                    <FileText className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform" />
+                    Ver Formulario Base
+                  </Link>
+                </div>
               </div>
 
               {/* KPIs */}
@@ -639,8 +811,6 @@ export default function AdminDashboard() {
 
                   <div className="p-6 sm:p-8 overflow-y-auto max-h-[700px] custom-scrollbar">
                     {(() => {
-                      const firstItem = selectedPlanForView.items[0] || {};
-
                       return (
                         <div className="space-y-6 max-w-5xl mx-auto">
                           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 gap-4">
@@ -666,7 +836,17 @@ export default function AdminDashboard() {
                                 <Clock className="h-5 w-5" />
                                 <h5 className="font-bold text-xs uppercase tracking-widest">Tiempo Estimado</h5>
                               </div>
-                              <p className="text-white font-medium text-lg">{firstItem.plazo_dias ? `${firstItem.plazo_dias} Días` : 'No definido'}</p>
+                              <p className="text-white font-medium text-lg">
+                                {(() => {
+                                  const plazos = selectedPlanForView.items
+                                    .map((it: any) => Number(it.plazo_dias))
+                                    .filter((n: number) => !isNaN(n) && n > 0);
+                                  if (plazos.length === 0) return 'No definido';
+                                  const min = Math.min(...plazos);
+                                  const max = Math.max(...plazos);
+                                  return min === max ? `${min} Días Laborales` : `${min} - ${max} Días Laborales`;
+                                })()}
+                              </p>
                             </div>
 
                             <div className="bg-slate-900/50 p-5 rounded-2xl border border-slate-700 shadow-inner">
@@ -675,18 +855,47 @@ export default function AdminDashboard() {
                                 <h5 className="font-bold text-xs uppercase tracking-widest">Responsables</h5>
                               </div>
                               <div className="space-y-3">
-                                {firstItem.responsable_1_nombre && (
-                                  <div>
-                                    <p className="text-white font-medium text-sm">{firstItem.responsable_1_nombre}</p>
-                                    <p className="text-[10px] text-slate-400">{firstItem.responsable_1_cargo || 'Director Técnico'}</p>
-                                  </div>
-                                )}
-                                {firstItem.responsable_2_nombre && (
-                                  <div>
-                                    <p className="text-white font-medium text-sm">{firstItem.responsable_2_nombre}</p>
-                                    <p className="text-[10px] text-slate-400">{firstItem.responsable_2_cargo || 'Vigilancia Epidemiológica'}</p>
-                                  </div>
-                                )}
+                                {(() => {
+                                  const resp1List: string[] = Array.from(
+                                    new Set(
+                                      selectedPlanForView.items
+                                        .map((i: any) => String(i.responsable_1_nombre || '').trim())
+                                        .filter((name: string) => name.length > 0)
+                                    )
+                                  );
+                                  const resp2List: string[] = Array.from(
+                                    new Set(
+                                      selectedPlanForView.items
+                                        .map((i: any) => String(i.responsable_2_nombre || '').trim())
+                                        .filter((name: string) => name.length > 0)
+                                    )
+                                  );
+
+                                  if (resp1List.length === 0 && resp2List.length === 0) {
+                                    return <p className="text-slate-400 text-sm">No definidos</p>;
+                                  }
+
+                                  return (
+                                    <>
+                                      {resp1List.length > 0 && (
+                                        <div>
+                                          <p className="text-white font-medium text-sm">
+                                            {resp1List.length === 1 ? resp1List[0] : `${resp1List.length} Responsables asignados`}
+                                          </p>
+                                          <p className="text-[10px] text-slate-400">Director Técnico / Responsables</p>
+                                        </div>
+                                      )}
+                                      {resp2List.length > 0 && (
+                                        <div>
+                                          <p className="text-white font-medium text-sm">
+                                            {resp2List.length === 1 ? resp2List[0] : `${resp2List.length} Co-responsables asignados`}
+                                          </p>
+                                          <p className="text-[10px] text-slate-400">Vigilancia Epidemiológica</p>
+                                        </div>
+                                      )}
+                                    </>
+                                  );
+                                })()}
                               </div>
                             </div>
                           </div>
@@ -704,12 +913,26 @@ export default function AdminDashboard() {
                                   <div key={item.id || idx} className="bg-slate-800/80 rounded-2xl border border-slate-700 overflow-hidden transition-all duration-300 shadow-md">
                                     <button
                                       onClick={() => setExpandedItem(isExpanded ? null : (item.id || idx))}
-                                      className="w-full text-left p-5 flex items-center justify-between hover:bg-slate-700 transition-colors"
+                                      className="w-full text-left p-5 flex items-center justify-between hover:bg-slate-700 transition-colors gap-3"
                                     >
-                                      <div className="flex-1 pr-4">
+                                      <div className="flex-1 pr-2">
                                         <div className="flex items-start space-x-4">
                                           <span className="flex items-center justify-center h-8 w-8 rounded-full bg-slate-900 border border-slate-700 text-amber-500 text-sm font-bold shrink-0 shadow-inner mt-0.5">{idx + 1}</span>
-                                          <p className="text-white font-medium text-base leading-snug pt-1">{item.item_reprobado}</p>
+                                          <div>
+                                            <p className="text-white font-medium text-base leading-snug pt-1">{item.item_reprobado}</p>
+                                            <div className="mt-2 flex flex-wrap items-center gap-2">
+                                              <span className="inline-flex items-center text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-500/15 text-blue-300 border border-blue-500/30">
+                                                <Clock className="w-3 h-3 mr-1" />
+                                                Plazo: {item.plazo_dias ? `${item.plazo_dias} ${item.plazo_dias === 1 ? 'día laboral' : 'días laborales'}` : 'No asignado'}
+                                              </span>
+                                              {item.responsable_1_nombre && (
+                                                <span className="inline-flex items-center text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                                                  <Users className="w-3 h-3 mr-1" />
+                                                  {item.responsable_1_nombre}
+                                                </span>
+                                              )}
+                                            </div>
+                                          </div>
                                         </div>
                                       </div>
                                       <div className={`shrink-0 flex items-center justify-center h-8 w-8 rounded-full transition-colors ${isExpanded ? 'bg-amber-500 text-slate-900' : 'bg-slate-900 text-slate-500 border border-slate-700'}`}>
@@ -727,14 +950,51 @@ export default function AdminDashboard() {
                                           </div>
                                         </div>
 
-                                        {item.recursos_necesarios && (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                           <div>
-                                            <p className="text-[10px] text-amber-500 font-bold uppercase tracking-widest mb-2 flex items-center"><Activity className="h-4 w-4 mr-2" /> Recursos Necesarios</p>
-                                            <div className="bg-slate-800 rounded-xl p-4 border border-slate-700/50 border-l-4 border-l-amber-500">
-                                              <p className="text-slate-300 text-sm whitespace-pre-wrap leading-relaxed">{item.recursos_necesarios}</p>
+                                            <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest mb-2 flex items-center">
+                                              <Clock className="h-4 w-4 mr-2" /> Plazo Estimado para este Hallazgo
+                                            </p>
+                                            <div className="bg-slate-800 rounded-xl p-4 border border-slate-700/50 border-l-4 border-l-blue-400">
+                                              <p className="text-slate-200 text-sm font-semibold">
+                                                {item.plazo_dias ? `${item.plazo_dias} días laborales` : 'No especificado'}
+                                              </p>
                                             </div>
                                           </div>
-                                        )}
+
+                                          <div>
+                                            <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest mb-2 flex items-center">
+                                              <Users className="h-4 w-4 mr-2" /> Responsable Asignado
+                                            </p>
+                                            <div className="bg-slate-800 rounded-xl p-4 border border-slate-700/50 border-l-4 border-l-emerald-400">
+                                              <p className="text-slate-200 text-sm font-semibold">
+                                                {item.responsable_1_nombre || 'No asignado'}
+                                              </p>
+                                              <p className="text-xs text-slate-400">
+                                                {item.responsable_1_cargo || 'Director Técnico'}
+                                              </p>
+                                              {item.responsable_2_nombre && (
+                                                <div className="mt-2 pt-2 border-t border-slate-700/50">
+                                                  <p className="text-slate-300 text-xs font-medium">
+                                                    Co-responsable: {item.responsable_2_nombre}
+                                                  </p>
+                                                  <p className="text-[10px] text-slate-400">
+                                                    {item.responsable_2_cargo || 'Vigilancia Epidemiológica'}
+                                                  </p>
+                                                </div>
+                                              )}
+                                            </div>
+                                          </div>
+
+                                          {item.recursos_necesarios && (
+                                            <div className="md:col-span-2">
+                                              <p className="text-[10px] text-amber-500 font-bold uppercase tracking-widest mb-2 flex items-center"><Activity className="h-4 w-4 mr-2" /> Recursos Necesarios</p>
+                                              <div className="bg-slate-800 rounded-xl p-4 border border-slate-700/50 border-l-4 border-l-amber-500">
+                                                <p className="text-slate-300 text-sm whitespace-pre-wrap leading-relaxed">{item.recursos_necesarios}</p>
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
                                       </div>
                                     )}
                                   </div>
@@ -816,8 +1076,332 @@ export default function AdminDashboard() {
             </div>
           )}
 
+          {/* =========================================
+              TAB: BOLETINES EPIDEMIOLÓGICOS (ADMIN)
+          ============================================= */}
+          {activeTab === 'boletines' && (
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              {/* Header de la sección */}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <h2 className="text-3xl font-black text-white tracking-tight flex items-center gap-3">
+                    <Newspaper className="h-8 w-8 text-amber-500" />
+                    Gestión de Boletines Epidemiológicos
+                  </h2>
+                  <p className="text-sm text-slate-400 mt-1">
+                    Publica, administra y visualiza los boletines técnicos oficiales que recibirán todos los centros de salud.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    {boletines.length} Boletines Publicados
+                  </span>
+                </div>
+              </div>
+
+              {/* Formulario de publicación */}
+              <div className="bg-slate-800/80 backdrop-blur-sm rounded-3xl shadow-2xl border border-slate-700 p-6 sm:p-8">
+                <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-700">
+                  <div className="p-2.5 bg-amber-500/10 text-amber-400 rounded-xl border border-amber-500/20">
+                    <PlusCircle className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">Publicar Nuevo Boletín Oficial</h3>
+                    <p className="text-xs text-slate-400">
+                      Los establecimientos de salud podrán consultar y previsualizar este documento de inmediato.
+                    </p>
+                  </div>
+                </div>
+
+                <form onSubmit={handlePublishBoletin} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    {/* Título */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                        Título del Boletín <span className="text-amber-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={bolTitulo}
+                        onChange={(e) => setBolTitulo(e.target.value)}
+                        placeholder="Ej. Boletín Epidemiológico Semanal - SE 42"
+                        className="w-full px-4 py-3 bg-slate-900/80 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-sm"
+                        required
+                      />
+                    </div>
+
+                    {/* Edición */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                        Edición / Semana Epidemiológica <span className="text-amber-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={bolEdicion}
+                        onChange={(e) => setBolEdicion(e.target.value)}
+                        placeholder="Ej. Edición Oficial N° 42 / 2026"
+                        className="w-full px-4 py-3 bg-slate-900/80 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-sm"
+                        required
+                      />
+                    </div>
+
+                    {/* Fecha de Emisión */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                        Fecha de Publicación <span className="text-amber-500">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={bolFecha}
+                        onChange={(e) => setBolFecha(e.target.value)}
+                        className="w-full px-4 py-3 bg-slate-900/80 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-sm"
+                        required
+                      />
+                    </div>
+
+                    {/* Autor / Emisor */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                        Autor / Dirección Emisora
+                      </label>
+                      <input
+                        type="text"
+                        value={bolAutor}
+                        onChange={(e) => setBolAutor(e.target.value)}
+                        placeholder="Dirección de Epidemiología SEDES"
+                        className="w-full px-4 py-3 bg-slate-900/80 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-sm"
+                      />
+                    </div>
+
+                    {/* Enlace o Archivo */}
+                    <div className="space-y-2 md:col-span-2">
+                      <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                        Enlace de Google Drive o URL de PDF <span className="text-amber-500">*</span>
+                      </label>
+                      <input
+                        type="url"
+                        value={bolUrl}
+                        onChange={(e) => {
+                          setBolUrl(e.target.value);
+                          setBolArchivoNombre('Documento_Boletin.pdf');
+                        }}
+                        placeholder="https://drive.google.com/file/d/.../view?usp=sharing"
+                        className="w-full px-4 py-3 bg-slate-900/80 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-sm font-mono text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Resumen / Descripción */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                      Resumen / Descripción Epidemiológica
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={bolDescripcion}
+                      onChange={(e) => setBolDescripcion(e.target.value)}
+                      placeholder="Breve resumen de la situación epidemiológica, alertas activas y recomendaciones para los equipos de salud..."
+                      className="w-full px-4 py-3 bg-slate-900/80 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-sm resize-none"
+                    />
+                  </div>
+
+                  {/* Nota informativa de Google Drive */}
+                  <div className="p-3.5 bg-amber-500/5 rounded-xl border border-amber-500/20 text-xs text-amber-300/90 flex items-start gap-2.5">
+                    <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+                    <span>
+                      <strong>Consejo para Google Drive:</strong> Puedes copiar el enlace con opción <em>"Cualquier persona con el enlace"</em>. El sistema lo convertirá automáticamente en un visor interactivo integrado para los centros de salud.
+                    </span>
+                  </div>
+
+                  {/* Botón de envío */}
+                  <div className="flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={isPublishingBoletin}
+                      className="inline-flex items-center px-6 py-3.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl transition-all shadow-lg shadow-amber-500/20 hover:scale-[1.02] disabled:opacity-50 text-sm"
+                    >
+                      {isPublishingBoletin ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-slate-950 border-t-transparent mr-2" />
+                          Publicando en Supabase...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="h-4 w-4 mr-2" />
+                          Publicar Boletín Oficial
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              {/* Lista de Boletines Publicados */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-amber-500" />
+                    Boletines Registrados en la Base de Datos ({boletines.length})
+                  </h3>
+                  <button
+                    onClick={() => fetchBoletinesAdmin()}
+                    disabled={loadingBoletines}
+                    className="inline-flex items-center px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl text-xs font-bold border border-slate-700 transition-all gap-1.5"
+                    title="Recargar desde Supabase"
+                  >
+                    <RefreshCw className={`h-3.5 w-3.5 ${loadingBoletines ? 'animate-spin text-amber-500' : ''}`} />
+                    Sincronizar
+                  </button>
+                </div>
+
+                {loadingBoletines ? (
+                  <div className="bg-slate-800/50 rounded-2xl border border-slate-700 p-12 text-center">
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500 mb-3"></div>
+                    <p className="text-slate-400 font-medium text-xs">Consultando base de datos Supabase...</p>
+                  </div>
+                ) : boletines.length === 0 ? (
+                  <div className="bg-slate-800/50 rounded-2xl border border-slate-700 p-12 text-center">
+                    <Newspaper className="h-12 w-12 text-slate-600 mx-auto mb-3" />
+                    <p className="text-white font-bold">No hay boletines epidemiológicos registrados</p>
+                    <p className="text-xs text-slate-400 mt-1">Completa el formulario anterior para publicar el primer boletín oficial.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    {boletines.map((bol) => (
+                      <div
+                        key={bol.id}
+                        className="bg-slate-800/90 backdrop-blur-sm border border-slate-700/80 hover:border-amber-500/60 rounded-3xl p-6 transition-all duration-300 flex flex-col justify-between group shadow-xl hover:-translate-y-1 overflow-hidden relative"
+                      >
+                        {/* Barra superior de acento ámbar */}
+                        <div className="h-1.5 w-full bg-gradient-to-r from-amber-500 to-amber-300 absolute top-0 left-0"></div>
+
+                        <div className="pt-1">
+                          <div className="flex items-start justify-between gap-3 mb-3">
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black bg-amber-500/10 text-amber-400 border border-amber-500/25 uppercase tracking-wider">
+                              <CheckCircle className="h-3 w-3" />
+                              {bol.edicion}
+                            </span>
+                            <span className="text-xs font-semibold text-slate-400">
+                              {formatDate(bol.fecha_publicacion, { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </span>
+                          </div>
+
+                          <h4 className="text-base font-black text-white group-hover:text-amber-400 transition-colors line-clamp-2 mb-2 tracking-tight">
+                            {bol.titulo}
+                          </h4>
+
+                          <p className="text-xs text-slate-400 line-clamp-3 mb-4 leading-relaxed font-normal">
+                            {bol.descripcion}
+                          </p>
+                        </div>
+
+                        <div className="pt-4 border-t border-slate-700/60 flex items-center justify-between gap-2">
+                          <span className="text-[11px] text-slate-400 font-medium truncate max-w-[150px]">
+                            {bol.autor || 'SEDES Cochabamba'}
+                          </span>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleOpenPreviewBoletin(bol)}
+                              className="inline-flex items-center px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-black transition-all hover:scale-105 shadow-md shadow-amber-500/15"
+                            >
+                              <Eye className="h-3.5 w-3.5 mr-1.5" />
+                              Previsualizar
+                            </button>
+
+                            {bol.archivo_url && (
+                              <a
+                                href={formatPdfDownloadUrl(bol.archivo_url)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                download={bol.archivo_nombre || `${bol.titulo}.pdf`}
+                                className="p-2 bg-slate-900 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl border border-slate-700 transition-colors"
+                                title="Descargar documento"
+                              >
+                                <Download className="h-4 w-4" />
+                              </a>
+                            )}
+
+                            <button
+                              onClick={() => handleDeleteBoletin(bol.id)}
+                              className="p-2 bg-slate-900 hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 rounded-xl border border-slate-700 transition-colors"
+                              title="Eliminar boletín"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
         </div>
       </main>
+
+      {/* =========================================
+          MODAL: PREVISUALIZADOR PDF DEL ADMINISTRADOR
+      ============================================= */}
+      {previewAdminBoletin && adminPreviewPdfUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="relative w-full max-w-5xl h-[90vh] bg-slate-900 border border-slate-700 rounded-3xl shadow-2xl flex flex-col overflow-hidden">
+            {/* Barra superior del visor */}
+            <div className="p-4 sm:px-6 bg-slate-950/90 border-b border-slate-800 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 overflow-hidden">
+                <div className="p-2 bg-amber-500/10 text-amber-400 rounded-xl border border-amber-500/20 shrink-0">
+                  <FileText className="h-5 w-5" />
+                </div>
+                <div className="overflow-hidden">
+                  <h3 className="text-sm sm:text-base font-bold text-white truncate">
+                    {previewAdminBoletin.titulo}
+                  </h3>
+                  <p className="text-xs text-slate-400 truncate">
+                    {previewAdminBoletin.edicion} • Emitido por {previewAdminBoletin.autor}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <a
+                  href={previewAdminBoletin.archivo_url || adminPreviewPdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold border border-slate-700 transition-all hover:scale-105"
+                  title="Abrir en pestaña nueva"
+                >
+                  <ExternalLink className="h-4 w-4 sm:mr-1.5" />
+                  <span className="hidden sm:inline">Pestaña Completa</span>
+                </a>
+
+                <button
+                  onClick={() => {
+                    setPreviewAdminBoletin(null);
+                    setAdminPreviewPdfUrl(null);
+                  }}
+                  className="p-2 bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 rounded-xl border border-slate-700 transition-colors"
+                  title="Cerrar visor"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Contenedor del documento PDF / Iframe */}
+            <div className="flex-1 bg-slate-950 p-2 sm:p-4 flex items-center justify-center overflow-hidden">
+              <iframe
+                src={adminPreviewPdfUrl}
+                title={previewAdminBoletin.titulo}
+                className="w-full h-full rounded-2xl border border-slate-800 bg-white"
+                allow="autoplay"
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Estilos para el scroll personalizado de las tablas y paneles */}
       <style>{`
